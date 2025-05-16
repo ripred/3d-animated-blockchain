@@ -3,14 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<<<<<<< HEAD
-  <title>3-D Git-Style Ledger Branch Visualizer</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #121212; overflow: hidden; font-family: sans-serif; }
-    #canvas-container { width: 100vw; height: 100vh; }
-    canvas { display: block; }
-=======
   <title>3D Node Network Simulation - Interactive</title>
   <style>
     body { margin: 0; overflow: hidden; background:#222; color: #eee; font-family: sans-serif; }
@@ -60,17 +52,10 @@
     #closeGeneratedCode:hover {
         background: #545b62;
     }
->>>>>>> 3D_Blockchain_Visualizer
   </style>
 </head>
 <body>
 <div id="canvas-container"></div>
-<<<<<<< HEAD
-
-<script type="module">
-/* ───────────────────────────── Imports ───────────────────────────── */
-import * as THREE from 'https://unpkg.com/three@0.152.2/build/three.module.js';
-=======
 <div id="generatedCodeContainer" style="display:none; position: fixed; top: 10px; right: 10px; width: 45%; height: 80%; background: rgba(0,0,0,0.85); border: 1px solid #555; overflow: auto; z-index: 1000; padding: 15px; box-sizing: border-box; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
   <h3 style="margin-top:0; color: #fff;">Generated Embeddable App Code:</h3>
   <textarea id="generatedCodeOutput" style="width: 100%; height: calc(100% - 80px); background: #1e1e1e; color: #d4d4d4; border: 1px solid #333; font-family: monospace; font-size: 0.8em; box-sizing: border-box; border-radius: 4px; padding: 10px;"></textarea>
@@ -82,53 +67,15 @@ import * as THREE from 'https://unpkg.com/three@0.152.2/build/three.module.js';
 
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.module.js';
->>>>>>> 3D_Blockchain_Visualizer
 import { GUI } from 'https://unpkg.com/dat.gui@0.7.9/build/dat.gui.module.js';
 
-/* ─────────────────────── Globals / Constants ─────────────────────── */
+// ========= Globals =========
 let scene, camera, renderer;
-<<<<<<< HEAD
-let graphGroup, ledgerGroup, pulsesGroup;
-let nodes = [], edges = [], nodeChains = [], pulses = [];
-=======
 let graphGroup, pulsesGroup;
 let nodeMeshes = [];
 let edges = [], pulses = [];
->>>>>>> 3D_Blockchain_Visualizer
 const clock = new THREE.Clock();
-const tmpV  = new THREE.Vector3();
-const COLORS = [0xff5555, 0x4caf50, 0x2196f3, 0xffc107, 0x9c27b0, 0x00bcd4];
 
-<<<<<<< HEAD
-const params = {
-  nodeCount   : 12,
-  radius      : 5,
-  nodeSize    : 0.45,
-  nodeColor   : '#00aaff',
-  lineColor   : '#666666',
-  cubeSize    : 0.30,
-  cubeSpacing : 1,
-  chainFade   : 60,
-  maxBranches : 4,
-  spawnChance : 0.25,
-  mergeChance : 0.05,
-  pulseCount  : 16,
-  pulseSpeed  : 0.25,
-  runAnimation: true,
-};
-
-/* ───────────────────────── Helper Functions ──────────────────────── */
-const spacing = () => params.cubeSize * params.cubeSpacing;
-
-function makeCube(color) {
-  return new THREE.Mesh(
-    new THREE.BoxGeometry(params.cubeSize, params.cubeSize, params.cubeSize),
-    new THREE.MeshPhongMaterial({ color, emissive: color })
-  );
-}
-
-/* ───────────────────────────── Init ──────────────────────────────── */
-=======
 // Colors for random cubes
 const COLORS = [0xff0000, 0x2196f3, 0xffc107, 0x9c27b0, 0x4caf50, 0xf44336, 0xe91e63, 0x673ab7, 0x00bcd4, 0x8bc34a];
 
@@ -204,21 +151,10 @@ const getScaledNodeSize = () => params.nodeSize * params.globalScale;
 const getScaledCubeSize = () => params.cubeSize * params.globalScale;
 const getScaledLineThickness = () => params.lineThickness * params.globalScale;
 
->>>>>>> 3D_Blockchain_Visualizer
 init();
 
+// ========= Init =========
 function init() {
-<<<<<<< HEAD
-  scene  = new THREE.Scene();
-
-  // Camera placed so +X (viewer-right) is truly screen-right
-  camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 1000);
-  camera.position.set(12, 8, 12);
-  camera.lookAt(0, 0, 0);
-
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(innerWidth, innerHeight);
-=======
   loadParamsFromLocalStorage(); // Load params before initializing anything else
 
   scene = new THREE.Scene();
@@ -229,12 +165,11 @@ function init() {
   renderer = new THREE.WebGLRenderer({ antialias: true }); 
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
->>>>>>> 3D_Blockchain_Visualizer
   document.getElementById('canvas-container').appendChild(renderer.domElement);
 
 
   scene.add(new THREE.AmbientLight(0x888888));
-  const dl = new THREE.DirectionalLight(0xffffff, 0.9);
+  const dl = new THREE.DirectionalLight(0xffffff, 0.8);
   dl.position.set(10, 10, 10);
   scene.add(dl);
 
@@ -242,46 +177,15 @@ function init() {
   pulsesGroup = new THREE.Group();
   scene.add(graphGroup, pulsesGroup);
 
-<<<<<<< HEAD
-  setupGUI();
-  window.addEventListener('resize', onResize);
-
-  rebuild();
-=======
   setupGUI(); // GUI will now reflect loaded or default params
   window.addEventListener('resize', onResize);
   rebuild(); 
->>>>>>> 3D_Blockchain_Visualizer
   animate();
 }
 
-/* ───────────────────────────── GUI ───────────────────────────────── */
+// ========= GUI =========
 function setupGUI() {
   const gui = new GUI();
-<<<<<<< HEAD
-  gui.add(params, 'runAnimation').name('Run');
-  gui.add(params, 'nodeCount',   2, 50, 1).name('Nodes').onFinishChange(rebuild);
-  gui.add(params, 'radius',      2, 12, 0.2).name('Radius').onFinishChange(rebuild);
-  gui.add(params, 'nodeSize',    0.1, 1, 0.05).name('Node Size').onFinishChange(rebuild);
-  gui.addColor(params, 'nodeColor').name('Node Color').onFinishChange(rebuild);
-  gui.addColor(params, 'lineColor').name('Line Color').onFinishChange(rebuild);
-
-  gui.add(params, 'cubeSize',    0.05, 0.5, 0.01).name('Cube Size').onFinishChange(rebuild);
-  gui.add(params, 'cubeSpacing', 0.5, 2, 0.05).name('Cube Spacing').onFinishChange(rebuild);
-  gui.add(params, 'chainFade',   10, 300, 1).name('Ledger Length').onChange(() => {
-    pruneAllBranches();
-    alignAllBranches();
-  });
-
-  gui.add(params, 'maxBranches', 1, 6, 1).name('Max Branches');
-  gui.add(params, 'spawnChance', 0.05, 0.6, 0.05).name('Spawn Chance');
-  gui.add(params, 'mergeChance', 0.01, 0.5, 0.01).name('Merge Chance');
-  gui.add(params, 'pulseCount',  0, 64, 1).name('Pulse Count').onFinishChange(rebuildPulses);
-  gui.add(params, 'pulseSpeed',  0.05, 1, 0.01).name('Pulse Speed');
-}
-
-/* ─────────────────────── Build / Rebuild Logic ───────────────────── */
-=======
 
   // Helper function to add a controller and attach save on change
   function addControl(folderOrGui, paramKey, ...args) {
@@ -441,44 +345,13 @@ function makeCube(defaultColor, transparent = false) {
 }
 
 // ========= Build Graph =========
->>>>>>> 3D_Blockchain_Visualizer
 function rebuild() {
   buildGraph();
-  buildChains();
   rebuildPulses();
 }
 
 function buildGraph() {
   graphGroup.clear();
-<<<<<<< HEAD
-  nodes = []; edges = [];
-
-  const lineMat = new THREE.LineBasicMaterial({ color: params.lineColor });
-
-  // Golden-section spiral distribution
-  for (let i = 0; i < params.nodeCount; i++) {
-    const phi   = Math.acos(2 * i / params.nodeCount - 1);
-    const theta = Math.sqrt(params.nodeCount * Math.PI) * phi;
-
-    const pos = new THREE.Vector3(
-      params.radius * Math.sin(phi) * Math.cos(theta),
-      params.radius * Math.sin(phi) * Math.sin(theta),
-      params.radius * Math.cos(phi)
-    );
-
-    const sphere = new THREE.Mesh(
-      new THREE.SphereGeometry(params.nodeSize, 16, 16),
-      new THREE.MeshPhongMaterial({ color: params.nodeColor })
-    );
-    sphere.position.copy(pos);
-    graphGroup.add(sphere);
-    nodes.push(sphere);
-  }
-
-  // Fully-connected edges
-  for (let i = 0; i < nodes.length; i++) {
-    for (let j = i + 1; j < nodes.length; j++) {
-=======
   nodeMeshes = []; edges = [];
   let nodePositions = [];
   const currentRadius = getScaledRadius();
@@ -512,159 +385,13 @@ function buildGraph() {
     for (let j = i + 1; j < nodePositions.length; j++) {
       const lineGeometry = new THREE.BufferGeometry().setFromPoints([pos, nodePositions[j]]);
       graphGroup.add(new THREE.Line(lineGeometry, lineMaterial));
->>>>>>> 3D_Blockchain_Visualizer
       edges.push({ from: i, to: j });
-      const line = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([nodes[i].position, nodes[j].position]),
-        lineMat
-      );
-      graphGroup.add(line);
     }
-  }
-}
-
-/* ───────────────────────── Ledger / Branches ─────────────────────── */
-function buildChains() {
-  ledgerGroup.clear();
-  nodeChains = nodes.map(() => ({ heads: [], nextBranchColorIndex: 1 }));
-}
-
-function pruneAllBranches() {
-  nodeChains.forEach(chain => chain.heads.forEach(pruneBranch));
-}
-
-function getMain(chain) { return chain.heads[0]; }
-
-function createBranch(chain) {
-  const color = COLORS[chain.nextBranchColorIndex++ % COLORS.length];
-  const g     = new THREE.Group();
-  g.userData  = { yOffset: -chain.heads.length * spacing(), shiftX: 0, color };
-
-  const h = { group: g, blocks: [] };
-  chain.heads.push(h);
-  ledgerGroup.add(g);
-  return h;
-}
-
-function prependCommit(h) {
-  // Move existing blocks +X (viewer-right in local space)
-  h.blocks.forEach(b => { b.position.x += spacing(); });
-
-  // New cube at origin of branch
-  const cube = makeCube(h.group.userData.color);
-  h.group.add(cube);
-  h.blocks.unshift(cube);
-}
-
-function merge(chain, branch) {
-  const main   = getMain(chain);
-  const offset = main.blocks.length * spacing();
-
-  branch.blocks.forEach(b => {
-    b.position.x += offset;
-    main.group.add(b);
-    main.blocks.push(b);
-  });
-
-  ledgerGroup.remove(branch.group);
-  chain.heads.splice(chain.heads.indexOf(branch), 1);
-  pruneBranch(main);
-}
-
-function pruneBranch(h) {
-  while (h.blocks.length > params.chainFade) {
-    h.group.remove(h.blocks.pop());
-  }
-}
-
-function alignPositions(chain) {
-  const max = Math.max(...chain.heads.map(h => h.blocks.length), 0);
-  chain.heads.forEach(h => {
-    h.group.userData.shiftX = -(max - h.blocks.length) * spacing();
   });
 }
 
-function alignAllBranches() { nodeChains.forEach(alignPositions); }
-
-function commit(idx) {
-  const chain = nodeChains[idx];
-  if (chain.heads.length === 0) { // ensure main branch
-    const main = createBranch(chain);
-    main.group.userData.yOffset = 0;
-    main.group.userData.color   = COLORS[0];
-  }
-
-  if (chain.heads.length < params.maxBranches && Math.random() < params.spawnChance) {
-    createBranch(chain);
-  }
-
-  const head = chain.heads[Math.floor(Math.random() * chain.heads.length)];
-  prependCommit(head);
-
-  if (head !== getMain(chain) && Math.random() < params.mergeChance) {
-    merge(chain, head);
-  }
-
-  pruneBranch(head);
-  alignPositions(chain);
-}
-
-/* ────────────────────────── Pulses on Edges ──────────────────────── */
+// ========= Pulses =========
 function rebuildPulses() {
-<<<<<<< HEAD
-  pulsesGroup.clear();
-  pulses = [];
-  if (edges.length === 0) return;
-
-  for (let i = 0; i < params.pulseCount; i++) {
-    const cube = makeCube(0xffffff);
-    const e    = edges[Math.floor(Math.random() * edges.length)];
-    cube.userData = { from: e.from, to: e.to, t: Math.random() };
-    updatePulse(cube, 0);
-    pulsesGroup.add(cube);
-    pulses.push(cube);
-  }
-}
-
-function updatePulse(p, dt) {
-  p.userData.t += params.pulseSpeed * dt;
-
-  if (p.userData.t >= 1) {
-    p.userData.t = 0;
-    commit(p.userData.to);
-
-    const adj = edges.filter(e => e.from === p.userData.to || e.to === p.userData.to);
-    const e   = adj[Math.floor(Math.random() * adj.length)];
-    p.userData.from = e.from === p.userData.to ? e.to : e.from;
-    p.userData.to   = e.from === p.userData.to ? e.from : e.to;
-  }
-
-  p.position.lerpVectors(
-    nodes[p.userData.from].position,
-    nodes[p.userData.to].position,
-    p.userData.t
-  );
-}
-
-/* ───────────────────── Position & Orientation Tick ───────────────── */
-function positionBranches() {
-  nodeChains.forEach((chain, idx) => {
-    nodes[idx].getWorldPosition(tmpV);
-
-    chain.heads.forEach(h => {
-      // Place branch origin at node, then offset in world space
-      h.group.position.set(
-        tmpV.x + h.group.userData.shiftX,
-        tmpV.y + h.group.userData.yOffset,
-        tmpV.z
-      );
-
-      /* Billboard: copy camera quaternion so branch plane faces viewer.
-         **NO EXTRA Z-ROTATION** – local +X is now screen-right. */
-      h.group.quaternion.copy(camera.quaternion);
-    });
-  });
-=======
   pulsesGroup.clear(); pulses = [];
   if (!edges.length || params.pulseCount === 0) return;
   for (let i = 0; i < params.pulseCount; i++) {
@@ -709,22 +436,11 @@ function updatePulse(pulseCube, deltaTime) {
     } else { return; }
   }
   updatePulsePosition(pulseCube);
->>>>>>> 3D_Blockchain_Visualizer
 }
 
-/* ───────────────────────────── Loop ──────────────────────────────── */
+// ========= Animation =========
 function animate() {
   requestAnimationFrame(animate);
-<<<<<<< HEAD
-  const dt = clock.getDelta();
-
-  pulses.forEach(p => updatePulse(p, dt));
-
-  if (params.runAnimation) {
-    graphGroup.rotation.y += 0.003;
-    pulsesGroup.rotation.y = graphGroup.rotation.y;
-  }
-=======
   const deltaTime = clock.getDelta();
   pulses.forEach(p => updatePulse(p, deltaTime));
   
@@ -732,19 +448,12 @@ function animate() {
   graphGroup.rotation.y += params.rotationYIncrement; 
   graphGroup.rotation.z += params.rotationZIncrement; 
   pulsesGroup.rotation.copy(graphGroup.rotation); 
->>>>>>> 3D_Blockchain_Visualizer
 
-  positionBranches();
   renderer.render(scene, camera);
 }
 
-/* ────────────────────────── Resize Handler ───────────────────────── */
+// ========= Resize =========
 function onResize() {
-<<<<<<< HEAD
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-=======
   if (!renderer || !camera) return;
   const width = window.innerWidth; 
   const height = window.innerHeight;
@@ -752,7 +461,6 @@ function onResize() {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
   renderer.setSize(width, height);
->>>>>>> 3D_Blockchain_Visualizer
 }
 
 // ========= Embeddable App Generator =========
