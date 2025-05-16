@@ -75,13 +75,14 @@ let graphGroup, pulsesGroup;
 let nodeMeshes = [];
 let edges = [], pulses = [];
 const clock = new THREE.Clock();
+let directionalLight, hemisphereLight; // Keep references for potential updates
 
 // Colors for random cubes
 const COLORS = [0xff0000, 0x2196f3, 0xffc107, 0x9c27b0, 0x4caf50, 0xf44336, 0xe91e63, 0x673ab7, 0x00bcd4, 0x8bc34a];
 
 // Local Storage Keys
-const SECRET_STORAGE_KEY = 'simulationSecretKeyExists_v1'; // Added versioning
-const PARAMS_STORAGE_KEY = 'simulationParams_v1';         // Added versioning
+const SECRET_STORAGE_KEY = 'simulationSecretKeyExists_v2'; // Incremented version for new structure
+const PARAMS_STORAGE_KEY = 'simulationParams_v2';         // Incremented version
 
 // ========= Parameters (Default values, might be overridden by local storage) =========
 const params = {
@@ -100,18 +101,19 @@ const params = {
   rotationZIncrement: 0.0,    
   cubeInteriorColor: '#ff0000', 
   randomCubeColor: false,
+  softInternalCubeLight: true, // New: Option for internal cube glow
   nodeTakesPulseColor: false,
-  generateApp: function() { generateEmbeddableApp(); } // This function will be preserved
+  generateApp: function() { generateEmbeddableApp(); } 
 };
 
 // ========= Local Storage Functions =========
 function saveParamsToLocalStorage() {
   try {
     const paramsToSave = { ...params };
-    delete paramsToSave.generateApp; // Don't save functions
+    delete paramsToSave.generateApp; 
     localStorage.setItem(PARAMS_STORAGE_KEY, JSON.stringify(paramsToSave));
-    localStorage.setItem(SECRET_STORAGE_KEY, 'true'); // Mark that we've saved once
-    console.log('Parameters saved to local storage.');
+    localStorage.setItem(SECRET_STORAGE_KEY, 'true'); 
+    // console.log('Parameters saved to local storage.');
   } catch (e) {
     console.error('Failed to save parameters to local storage:', e);
   }
@@ -123,23 +125,19 @@ function loadParamsFromLocalStorage() {
       const storedParamsString = localStorage.getItem(PARAMS_STORAGE_KEY);
       if (storedParamsString) {
         const loadedParams = JSON.parse(storedParamsString);
-        // Merge loaded params with defaults, preserving the generateApp function
-        // and ensuring all keys are present even if the stored version is older.
-        for (const key in loadedParams) {
-          if (params.hasOwnProperty(key) && key !== 'generateApp') {
+        for (const key in params) { // Iterate over default params to ensure all keys are considered
+          if (loadedParams.hasOwnProperty(key) && key !== 'generateApp') {
             params[key] = loadedParams[key];
           }
         }
         console.log('Parameters loaded from local storage.');
       }
     } else {
-      // First run or secret key not found, save current (default) params
       console.log('No secret key found. Saving default parameters to local storage.');
       saveParamsToLocalStorage();
     }
   } catch (e) {
     console.error('Failed to load or parse parameters from local storage:', e);
-    // If loading fails, proceed with defaults and save them
     saveParamsToLocalStorage();
   }
 }
@@ -155,29 +153,51 @@ init();
 
 // ========= Init =========
 function init() {
-  loadParamsFromLocalStorage(); // Load params before initializing anything else
+  loadParamsFromLocalStorage(); 
 
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(10, 10, 10); 
+  camera.position.set(10 * params.globalScale, 10 * params.globalScale, 15 * params.globalScale); // Adjusted camera for better view with scale
   camera.lookAt(0, 0, 0);
 
   renderer = new THREE.WebGLRenderer({ antialias: true }); 
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true; // Enable shadows
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
   document.getElementById('canvas-container').appendChild(renderer.domElement);
 
+  // Enhanced Lighting
+  scene.add(new THREE.AmbientLight(0x404040, 0.5)); // Reduced intensity as HemisphereLight is added
 
-  scene.add(new THREE.AmbientLight(0x888888));
-  const dl = new THREE.DirectionalLight(0xffffff, 0.8);
-  dl.position.set(10, 10, 10);
-  scene.add(dl);
+  hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8); // Sky, Ground, Intensity
+  hemisphereLight.position.set(0, 20, 0);
+  scene.add(hemisphereLight);
+
+  directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Color, Intensity
+  directionalLight.position.set(15, 20, 10); // Position the light
+  directionalLight.castShadow = true;
+  // Configure shadow properties
+  directionalLight.shadow.mapSize.width = 1024; // default 512
+  directionalLight.shadow.mapSize.height = 1024; // default 512
+  directionalLight.shadow.camera.near = 0.5;    // default 0.5
+  directionalLight.shadow.camera.far = 50;     // default 500
+  directionalLight.shadow.camera.left = -15 * params.globalScale;
+  directionalLight.shadow.camera.right = 15 * params.globalScale;
+  directionalLight.shadow.camera.top = 15 * params.globalScale;
+  directionalLight.shadow.camera.bottom = -15 * params.globalScale;
+  scene.add(directionalLight);
+  // const dlHelper = new THREE.DirectionalLightHelper(directionalLight, 5); // Optional: Helper to visualize light
+  // scene.add(dlHelper);
+  // const shadowCamHelper = new THREE.CameraHelper(directionalLight.shadow.camera); // Optional: Helper
+  // scene.add(shadowCamHelper);
+
 
   graphGroup  = new THREE.Group();
   pulsesGroup = new THREE.Group();
   scene.add(graphGroup, pulsesGroup);
 
-  setupGUI(); // GUI will now reflect loaded or default params
+  setupGUI(); 
   window.addEventListener('resize', onResize);
   rebuild(); 
   animate();
@@ -187,10 +207,11 @@ function init() {
 function setupGUI() {
   const gui = new GUI();
 
-  // Helper function to add a controller and attach save on change
   function addControl(folderOrGui, paramKey, ...args) {
     const controller = folderOrGui.add(params, paramKey, ...args);
-    controller.onChange(saveParamsToLocalStorage); // Save when this specific control changes
+    // Attach a generic onChange that calls saveParamsToLocalStorage
+    // Specific rebuild/rebuildPulses calls are handled in the main onChange for the controller
+    controller.onChange(saveParamsToLocalStorage);
     return controller;
   }
   function addColorControl(folderOrGui, paramKey, name) {
@@ -199,9 +220,20 @@ function setupGUI() {
     return controller;
   }
 
-
   const globalFolder = gui.addFolder('Global Settings');
-  addControl(globalFolder, 'globalScale', 0.1, 3.0, 0.01).name('Global Scale').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  addControl(globalFolder, 'globalScale', 0.1, 3.0, 0.01).name('Global Scale').onChange(() => { 
+      rebuild(); 
+      // Update shadow camera for directional light on scale change
+      if(directionalLight) {
+        directionalLight.shadow.camera.left = -15 * params.globalScale;
+        directionalLight.shadow.camera.right = 15 * params.globalScale;
+        directionalLight.shadow.camera.top = 15 * params.globalScale;
+        directionalLight.shadow.camera.bottom = -15 * params.globalScale;
+        directionalLight.shadow.camera.updateProjectionMatrix();
+        // if (shadowCamHelper) shadowCamHelper.update();
+      }
+      saveParamsToLocalStorage(); 
+    });
   
   const structureFolder = gui.addFolder('Graph Structure');
   addControl(structureFolder, 'nodeCount', 2, 50, 1).name('Node Count').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
@@ -218,6 +250,7 @@ function setupGUI() {
       saveParamsToLocalStorage();
   });
   addControl(cubeFolder, 'randomCubeColor').name('Random Cube Color').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); });
+  addControl(cubeFolder, 'softInternalCubeLight').name('Soft Internal Light').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); }); // New control
 
   const lineFolder = gui.addFolder('Line Appearance');
   addColorControl(lineFolder, 'lineColor', 'Line Color').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
@@ -225,13 +258,13 @@ function setupGUI() {
   
   const animationFolder = gui.addFolder('Animation & Interaction');
   addControl(animationFolder, 'pulseCount', 0, 100, 1).name('Pulse Count').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); });
-  addControl(animationFolder, 'pulseSpeed', 0.05, 1, 0.01).name('Pulse Speed').onChange(saveParamsToLocalStorage); // No rebuild needed, just save
+  addControl(animationFolder, 'pulseSpeed', 0.05, 1, 0.01).name('Pulse Speed').onChange(saveParamsToLocalStorage); 
   addControl(animationFolder, 'rotationXIncrement', -0.01, 0.01, 0.0001).name('Rotation X Incr.').onChange(saveParamsToLocalStorage);
   addControl(animationFolder, 'rotationYIncrement', -0.01, 0.01, 0.0001).name('Rotation Y Incr.').onChange(saveParamsToLocalStorage);
   addControl(animationFolder, 'rotationZIncrement', -0.01, 0.01, 0.0001).name('Rotation Z Incr.').onChange(saveParamsToLocalStorage);
   addControl(animationFolder, 'nodeTakesPulseColor').name('Node Takes Pulse Color').onChange(saveParamsToLocalStorage);
   
-  gui.add(params, 'generateApp').name('Generate Embeddable App'); // This one doesn't need to save params
+  gui.add(params, 'generateApp').name('Generate Embeddable App');
 
   document.getElementById('closeGeneratedCode').addEventListener('click', () => {
     document.getElementById('generatedCodeContainer').style.display = 'none';
@@ -322,7 +355,7 @@ function getPlatonicSolidVertices(count, radius) {
 }
 
 // ========= Helper =========
-function makeCube(defaultColor, transparent = false) {
+function makeCube(defaultColor) { // Removed transparent param, handled by softInternalCubeLight
   const s = getScaledCubeSize();
   const geom = new THREE.BoxGeometry(s, s, s);
   let chosenColorHex;
@@ -332,15 +365,42 @@ function makeCube(defaultColor, transparent = false) {
     chosenColorHex = new THREE.Color(defaultColor).getHex();
   }
 
-  const fillMaterial = new THREE.MeshPhongMaterial({ color: chosenColorHex, emissive: chosenColorHex, transparent: transparent, opacity: transparent ? 0.15 : 1 });
+  const isTransparent = params.softInternalCubeLight;
+  const opacity = isTransparent ? 0.85 : 1.0;
+
+  const fillMaterial = new THREE.MeshStandardMaterial({ 
+    color: chosenColorHex, 
+    emissive: chosenColorHex, // Emissive contributes to glow
+    emissiveIntensity: params.softInternalCubeLight ? 0.5 : 0.2, // More emissive if internal light is on
+    roughness: 0.6, 
+    metalness: 0.1,
+    transparent: isTransparent,
+    opacity: opacity
+  });
   const cubeMesh = new THREE.Mesh(geom, fillMaterial);
+  cubeMesh.castShadow = true; // Cubes should cast shadows
+  
   const edgeGeom = new THREE.EdgesGeometry(geom); 
-  const edgeMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: transparent, opacity: transparent ? 0.1 : 1 });
+  const edgeMat = new THREE.LineBasicMaterial({ 
+      color: 0x000000, 
+      transparent: isTransparent, // Edges also transparent if cube is
+      opacity: isTransparent ? 0.5 : 1.0 
+    });
   const edgeLines = new THREE.LineSegments(edgeGeom, edgeMat);
   
   const group = new THREE.Group();
-  group.add(cubeMesh); group.add(edgeLines);
+  group.add(cubeMesh); 
+  group.add(edgeLines);
   group.userData = { color: chosenColorHex };
+  group.castShadow = true; // Group itself can cast shadow (from cubeMesh)
+
+  if (params.softInternalCubeLight) {
+    const internalLight = new THREE.PointLight(chosenColorHex, 0.7, s * 1.5, 2); // color, intensity, distance, decay
+    internalLight.castShadow = false; // Internal light should not cast shadows
+    cubeMesh.add(internalLight); // Add light as child of the mesh so it's centered
+    group.userData.internalLight = internalLight;
+  }
+
   return group;
 }
 
@@ -377,13 +437,22 @@ function buildGraph() {
   const nodeGeometry = new THREE.SphereGeometry(currentNodeSize, 16, 16);
 
   nodePositions.forEach((pos, i) => {
-    const nodeMaterial = new THREE.MeshPhongMaterial({ color: new THREE.Color(params.nodeColor), emissive: new THREE.Color(params.nodeColor) });
+    const nodeMaterial = new THREE.MeshStandardMaterial({ // Changed to MeshStandardMaterial
+        color: new THREE.Color(params.nodeColor), 
+        emissive: new THREE.Color(params.nodeColor), // Nodes can also be emissive
+        emissiveIntensity: 0.3,
+        roughness: 0.5,
+        metalness: 0.2
+    });
     const sphereMesh = new THREE.Mesh(nodeGeometry, nodeMaterial);
     sphereMesh.position.copy(pos);
+    sphereMesh.castShadow = true; // Nodes cast shadows
+    // sphereMesh.receiveShadow = true; // Nodes can also receive shadows from other nodes/pulses
     graphGroup.add(sphereMesh);
     nodeMeshes.push(sphereMesh);
     for (let j = i + 1; j < nodePositions.length; j++) {
       const lineGeometry = new THREE.BufferGeometry().setFromPoints([pos, nodePositions[j]]);
+      // Lines don't cast or receive shadows typically
       graphGroup.add(new THREE.Line(lineGeometry, lineMaterial));
       edges.push({ from: i, to: j });
     }
@@ -395,9 +464,9 @@ function rebuildPulses() {
   pulsesGroup.clear(); pulses = [];
   if (!edges.length || params.pulseCount === 0) return;
   for (let i = 0; i < params.pulseCount; i++) {
-    const pulseCube = makeCube(params.cubeInteriorColor);
+    const pulseCube = makeCube(params.cubeInteriorColor); // makeCube now handles internal light
     const edge = edges[Math.floor(Math.random() * edges.length)];
-    pulseCube.userData = { from: edge.from, to: edge.to, t: Math.random(), color: pulseCube.userData.color };
+    pulseCube.userData = { from: edge.from, to: edge.to, t: Math.random(), color: pulseCube.userData.color, internalLight: pulseCube.userData.internalLight };
     updatePulsePosition(pulseCube);
     pulsesGroup.add(pulseCube);
     pulses.push(pulseCube);
@@ -418,9 +487,10 @@ function updatePulse(pulseCube, deltaTime) {
     const targetNodeIndex = pulseCube.userData.to;
     const pulseActualColor = pulseCube.userData.color;
     if (params.nodeTakesPulseColor && nodeMeshes[targetNodeIndex]) {
-        nodeMeshes[targetNodeIndex].material.color.setHex(pulseActualColor);
-        if (nodeMeshes[targetNodeIndex].material.emissive) {
-             nodeMeshes[targetNodeIndex].material.emissive.setHex(pulseActualColor);
+        const targetNodeMaterial = nodeMeshes[targetNodeIndex].material;
+        targetNodeMaterial.color.setHex(pulseActualColor);
+        if (targetNodeMaterial.emissive) {
+             targetNodeMaterial.emissive.setHex(pulseActualColor);
         }
     }
     pulseCube.userData.t = 0;
@@ -502,6 +572,8 @@ function generateEmbeddableApp() {
     let edges_embed = [], pulses_embed = [];
     const clock_embed = new THREE.Clock();
     let animationFrameId_embed;
+    let directionalLight_embed, hemisphereLight_embed;
+
 
     const getScaledRadius_embed = () => config.radius * config.globalScale;
     const getScaledNodeSize_embed = () => config.nodeSize * config.globalScale;
@@ -517,19 +589,34 @@ function generateEmbeddableApp() {
 
       scene_embed = new THREE.Scene();
       camera_embed = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-      camera_embed.position.set(10, 10, 10); 
+      camera_embed.position.set(10 * config.globalScale, 10 * config.globalScale, 15 * config.globalScale); 
       camera_embed.lookAt(0, 0, 0);
 
       renderer_embed = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer_embed.setPixelRatio(window.devicePixelRatio);
       renderer_embed.setSize(container.clientWidth, container.clientHeight);
       renderer_embed.setClearColor(0x000000, 0); 
+      renderer_embed.shadowMap.enabled = true;
+      renderer_embed.shadowMap.type = THREE.PCFSoftShadowMap;
       container.appendChild(renderer_embed.domElement);
 
-      scene_embed.add(new THREE.AmbientLight(0xcccccc));
-      const dl_embed = new THREE.DirectionalLight(0xffffff, 0.7);
-      dl_embed.position.set(10 * config.globalScale, 10 * config.globalScale, 10 * config.globalScale);
-      scene_embed.add(dl_embed);
+      scene_embed.add(new THREE.AmbientLight(0x404040, 0.5));
+      hemisphereLight_embed = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+      hemisphereLight_embed.position.set(0, 20 * config.globalScale, 0);
+      scene_embed.add(hemisphereLight_embed);
+
+      directionalLight_embed = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight_embed.position.set(15 * config.globalScale, 20 * config.globalScale, 10 * config.globalScale);
+      directionalLight_embed.castShadow = true;
+      directionalLight_embed.shadow.mapSize.width = 1024; 
+      directionalLight_embed.shadow.mapSize.height = 1024;
+      directionalLight_embed.shadow.camera.near = 0.5;    
+      directionalLight_embed.shadow.camera.far = 50 * config.globalScale;     
+      directionalLight_embed.shadow.camera.left = -15 * config.globalScale;
+      directionalLight_embed.shadow.camera.right = 15 * config.globalScale;
+      directionalLight_embed.shadow.camera.top = 15 * config.globalScale;
+      directionalLight_embed.shadow.camera.bottom = -15 * config.globalScale;
+      scene_embed.add(directionalLight_embed);
 
       graphGroup_embed = new THREE.Group();
       pulsesGroup_embed = new THREE.Group();
@@ -560,16 +647,65 @@ function generateEmbeddableApp() {
       let chosenColorHex;
       if (config.randomCubeColor) { chosenColorHex = EMBED_COLORS[Math.floor(Math.random() * EMBED_COLORS.length)]; }
       else { chosenColorHex = new THREE.Color(defaultColor).getHex(); }
-      const fillMaterial = new THREE.MeshPhongMaterial({color:chosenColorHex, emissive:chosenColorHex});
+      
+      const isTransparent_embed = config.softInternalCubeLight;
+      const opacity_embed = isTransparent_embed ? 0.85 : 1.0;
+
+      const fillMaterial = new THREE.MeshStandardMaterial({
+          color:chosenColorHex, 
+          emissive:chosenColorHex, 
+          emissiveIntensity: config.softInternalCubeLight ? 0.5 : 0.2,
+          roughness: 0.6, 
+          metalness: 0.1,
+          transparent: isTransparent_embed,
+          opacity: opacity_embed
+        });
       const cubeMesh = new THREE.Mesh(geom, fillMaterial);
+      cubeMesh.castShadow = true;
+
       const edgeGeom = new THREE.EdgesGeometry(geom);
-      const edgeMat = new THREE.LineBasicMaterial({color:0x000000});
+      const edgeMat = new THREE.LineBasicMaterial({
+          color:0x000000, 
+          transparent: isTransparent_embed, 
+          opacity: isTransparent_embed ? 0.5 : 1.0
+        });
       const edgeLines = new THREE.LineSegments(edgeGeom, edgeMat);
       const group = new THREE.Group(); group.add(cubeMesh); group.add(edgeLines);
-      group.userData = {color: chosenColorHex}; return group;
+      group.userData = {color: chosenColorHex};
+      group.castShadow = true;
+
+      if (config.softInternalCubeLight) {
+        const internalLight_embed = new THREE.PointLight(chosenColorHex, 0.7, s * 1.5, 2);
+        internalLight_embed.castShadow = false;
+        cubeMesh.add(internalLight_embed); // Add to mesh to be centered
+        group.userData.internalLight = internalLight_embed;
+      }
+      return group;
     }
 
-    function rebuild_embed() { buildGraph_embed(); rebuildPulses_embed(); }
+    function rebuild_embed() { 
+        // Update light positions based on scale before rebuilding graph
+        if (directionalLight_embed) {
+            directionalLight_embed.position.set(15 * config.globalScale, 20 * config.globalScale, 10 * config.globalScale);
+            directionalLight_embed.shadow.camera.left = -15 * config.globalScale;
+            directionalLight_embed.shadow.camera.right = 15 * config.globalScale;
+            directionalLight_embed.shadow.camera.top = 15 * config.globalScale;
+            directionalLight_embed.shadow.camera.bottom = -15 * config.globalScale;
+            directionalLight_embed.shadow.camera.far = 50 * config.globalScale;   
+            directionalLight_embed.shadow.camera.updateProjectionMatrix();
+        }
+        if (hemisphereLight_embed) {
+            hemisphereLight_embed.position.set(0, 20 * config.globalScale, 0);
+        }
+        if (camera_embed) { // Also adjust camera if it's tied to scale, though currently fixed
+             camera_embed.position.set(10 * config.globalScale, 10 * config.globalScale, 15 * config.globalScale);
+             camera_embed.lookAt(0,0,0);
+        }
+
+
+        buildGraph_embed(); 
+        rebuildPulses_embed(); 
+    }
 
     function buildGraph_embed() {
       graphGroup_embed.clear(); nodeMeshes_embed = []; edges_embed = [];
@@ -593,9 +729,17 @@ function generateEmbeddableApp() {
         });
       const nodeGeometry = new THREE.SphereGeometry(currentNodeSize,16,16);
       nodePositions.forEach((pos,i) => {
-        const nodeMaterial = new THREE.MeshPhongMaterial({color: new THREE.Color(config.nodeColor), emissive: new THREE.Color(config.nodeColor)});
+        const nodeMaterial = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(config.nodeColor), 
+            emissive: new THREE.Color(config.nodeColor),
+            emissiveIntensity: 0.3,
+            roughness: 0.5, metalness: 0.2
+        });
         const sphereMesh = new THREE.Mesh(nodeGeometry, nodeMaterial);
-        sphereMesh.position.copy(pos); graphGroup_embed.add(sphereMesh); nodeMeshes_embed.push(sphereMesh);
+        sphereMesh.position.copy(pos); 
+        sphereMesh.castShadow = true;
+        // sphereMesh.receiveShadow = true; // Optional
+        graphGroup_embed.add(sphereMesh); nodeMeshes_embed.push(sphereMesh);
         for (let j=i+1; j<nodePositions.length; j++) {
           const lineGeom = new THREE.BufferGeometry().setFromPoints([pos, nodePositions[j]]);
           graphGroup_embed.add(new THREE.Line(lineGeom, lineMaterial)); edges_embed.push({from:i,to:j});
@@ -609,7 +753,7 @@ function generateEmbeddableApp() {
       for (let i=0; i<config.pulseCount; i++) {
         const pulseCube = makeCube_embed(config.cubeInteriorColor);
         const edge = edges_embed[Math.floor(Math.random()*edges_embed.length)];
-        pulseCube.userData = {from:edge.from, to:edge.to, t:Math.random(), color:pulseCube.userData.color};
+        pulseCube.userData = {from:edge.from, to:edge.to, t:Math.random(), color:pulseCube.userData.color, internalLight: pulseCube.userData.internalLight};
         updatePulsePosition_embed(pulseCube); pulsesGroup_embed.add(pulseCube); pulses_embed.push(pulseCube);
       }
     }
@@ -628,8 +772,9 @@ function generateEmbeddableApp() {
         const targetIdx = pulseCube.userData.to;
         const color = pulseCube.userData.color;
         if (config.nodeTakesPulseColor && nodeMeshes_embed[targetIdx]) {
-          nodeMeshes_embed[targetIdx].material.color.setHex(color);
-          if(nodeMeshes_embed[targetIdx].material.emissive) nodeMeshes_embed[targetIdx].material.emissive.setHex(color);
+          const targetNodeMaterial_embed = nodeMeshes_embed[targetIdx].material;
+          targetNodeMaterial_embed.color.setHex(color);
+          if(targetNodeMaterial_embed.emissive) targetNodeMaterial_embed.emissive.setHex(color);
         }
         pulseCube.userData.t = 0;
         const connected = edges_embed.filter(e => e.from === targetIdx || e.to === targetIdx);
@@ -682,7 +827,7 @@ function generateEmbeddableApp() {
                     needsNodeColorUpdate = true;
                 } else if (key === 'lineColor') { 
                     needsLineColorUpdate = true;
-                } else if (['pulseCount', 'cubeInteriorColor', 'randomCubeColor'].includes(key)) {
+                } else if (['pulseCount', 'cubeInteriorColor', 'randomCubeColor', 'softInternalCubeLight'].includes(key)) {
                     if (key === 'cubeInteriorColor' && config.randomCubeColor) { /* no action */ }
                     else { needsRebuildPulses = true; }
                 }
@@ -700,8 +845,10 @@ function generateEmbeddableApp() {
             if (needsNodeColorUpdate && nodeMeshes_embed) {
                 const colorObj = new THREE.Color(config.nodeColor);
                 nodeMeshes_embed.forEach(mesh => { 
-                    mesh.material.color.set(colorObj);
-                    if(mesh.material.emissive) mesh.material.emissive.set(colorObj);
+                    if(mesh.material) { // Check if material exists
+                        mesh.material.color.set(colorObj);
+                        if(mesh.material.emissive) mesh.material.emissive.set(colorObj);
+                    }
                 });
             }
             if (needsLineColorUpdate && graphGroup_embed) { 
@@ -729,6 +876,7 @@ function generateEmbeddableApp() {
       setRotationZIncrement: function(value) { this.updateConfig({ rotationZIncrement: value }); },
       setCubeInteriorColor: function(hexString) { this.updateConfig({ cubeInteriorColor: hexString }); },
       setRandomCubeColor: function(booleanValue) { this.updateConfig({ randomCubeColor: booleanValue }); },
+      setSoftInternalCubeLight: function(booleanValue) { this.updateConfig({ softInternalCubeLight: booleanValue }); },
       setNodeTakesPulseColor: function(booleanValue) { this.updateConfig({ nodeTakesPulseColor: booleanValue }); },
       
       getCurrentConfig: function() { return JSON.parse(JSON.stringify(config)); }
