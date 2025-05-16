@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<<<<<<< HEAD
+  <title>3-D Git-Style Ledger Branch Visualizer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #121212; overflow: hidden; font-family: sans-serif; }
+    #canvas-container { width: 100vw; height: 100vh; }
+    canvas { display: block; }
+=======
+  <title>3D Node Network Simulation - Interactive</title>
+  <style>
+    body { margin: 0; overflow: hidden; background:#222; color: #eee; font-family: sans-serif; }
+    #canvas-container { width: 100vw; height: 100vh; }
+    /* Ensure dat.gui is visible and usable */
+    .dg.main .close-button { background-color: #333; }
+    .dg li:not(.folder) { background: #333; border-bottom: 1px solid #444; }
+    .dg .cr.boolean:hover { background: #444; }
+    
+    /* Make numeric input fields wider */
+    .dg .cr.number input[type=text] { 
+        color: #eee;
+        width: 85px !important; /* Increased width */
+    }
+    .dg .cr.string input[type=text] { color: #eee; }
+    .dg .cr.color .c input[type=text] { color: #eee !important; }
+    .dg .ac { /* For action buttons */
+        background: #444 !important;
+        border-bottom: 1px solid #555 !important;
+        color: #eee !important;
+        font-weight: bold !important;
+    }
+    .dg .ac:hover {
+        background: #555 !important;
+    }
+    /* Styles for the generated code popup buttons */
+    #generatedCodeContainer button {
+        margin-top: 10px;
+        padding: 8px 15px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    #copyGeneratedCode {
+        background: #007bff; /* Blue for copy */
+        color: white;
+        margin-left: 5px;
+    }
+    #copyGeneratedCode:hover {
+        background: #0056b3;
+    }
+    #closeGeneratedCode {
+        background: #6c757d; /* Gray for close */
+        color: white;
+    }
+    #closeGeneratedCode:hover {
+        background: #545b62;
+    }
+>>>>>>> 3D_Blockchain_Visualizer
+  </style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<<<<<<< HEAD
+
+<script type="module">
+/* ───────────────────────────── Imports ───────────────────────────── */
+import * as THREE from 'https://unpkg.com/three@0.152.2/build/three.module.js';
+=======
+<div id="generatedCodeContainer" style="display:none; position: fixed; top: 10px; right: 10px; width: 45%; height: 80%; background: rgba(0,0,0,0.85); border: 1px solid #555; overflow: auto; z-index: 1000; padding: 15px; box-sizing: border-box; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+  <h3 style="margin-top:0; color: #fff;">Generated Embeddable App Code:</h3>
+  <textarea id="generatedCodeOutput" style="width: 100%; height: calc(100% - 80px); background: #1e1e1e; color: #d4d4d4; border: 1px solid #333; font-family: monospace; font-size: 0.8em; box-sizing: border-box; border-radius: 4px; padding: 10px;"></textarea>
+  <div style="text-align: right;">
+    <button id="copyGeneratedCode">Copy Code</button>
+    <button id="closeGeneratedCode">Close</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.module.js';
+>>>>>>> 3D_Blockchain_Visualizer
+import { GUI } from 'https://unpkg.com/dat.gui@0.7.9/build/dat.gui.module.js';
+
+/* ─────────────────────── Globals / Constants ─────────────────────── */
+let scene, camera, renderer;
+<<<<<<< HEAD
+let graphGroup, ledgerGroup, pulsesGroup;
+let nodes = [], edges = [], nodeChains = [], pulses = [];
+=======
+let graphGroup, pulsesGroup;
+let nodeMeshes = [];
+let edges = [], pulses = [];
+>>>>>>> 3D_Blockchain_Visualizer
+const clock = new THREE.Clock();
+const tmpV  = new THREE.Vector3();
+const COLORS = [0xff5555, 0x4caf50, 0x2196f3, 0xffc107, 0x9c27b0, 0x00bcd4];
+
+<<<<<<< HEAD
+const params = {
+  nodeCount   : 12,
+  radius      : 5,
+  nodeSize    : 0.45,
+  nodeColor   : '#00aaff',
+  lineColor   : '#666666',
+  cubeSize    : 0.30,
+  cubeSpacing : 1,
+  chainFade   : 60,
+  maxBranches : 4,
+  spawnChance : 0.25,
+  mergeChance : 0.05,
+  pulseCount  : 16,
+  pulseSpeed  : 0.25,
+  runAnimation: true,
+};
+
+/* ───────────────────────── Helper Functions ──────────────────────── */
+const spacing = () => params.cubeSize * params.cubeSpacing;
+
+function makeCube(color) {
+  return new THREE.Mesh(
+    new THREE.BoxGeometry(params.cubeSize, params.cubeSize, params.cubeSize),
+    new THREE.MeshPhongMaterial({ color, emissive: color })
+  );
+}
+
+/* ───────────────────────────── Init ──────────────────────────────── */
+=======
+// Colors for random cubes
+const COLORS = [0xff0000, 0x2196f3, 0xffc107, 0x9c27b0, 0x4caf50, 0xf44336, 0xe91e63, 0x673ab7, 0x00bcd4, 0x8bc34a];
+
+// Local Storage Keys
+const SECRET_STORAGE_KEY = 'simulationSecretKeyExists_v1'; // Added versioning
+const PARAMS_STORAGE_KEY = 'simulationParams_v1';         // Added versioning
+
+// ========= Parameters (Default values, might be overridden by local storage) =========
+const params = {
+  globalScale: 1.0,
+  nodeCount: 12,
+  nodeColor: '#0029ff', 
+  lineColor: '#999999', 
+  lineThickness: 1.0,    
+  radius: 5.0,                 
+  nodeSize: 0.5,             
+  cubeSize: 0.25,            
+  pulseCount: 14,          
+  pulseSpeed: 0.23,        
+  rotationXIncrement: 0.0,    
+  rotationYIncrement: 0.004, 
+  rotationZIncrement: 0.0,    
+  cubeInteriorColor: '#ff0000', 
+  randomCubeColor: false,
+  nodeTakesPulseColor: false,
+  generateApp: function() { generateEmbeddableApp(); } // This function will be preserved
+};
+
+// ========= Local Storage Functions =========
+function saveParamsToLocalStorage() {
+  try {
+    const paramsToSave = { ...params };
+    delete paramsToSave.generateApp; // Don't save functions
+    localStorage.setItem(PARAMS_STORAGE_KEY, JSON.stringify(paramsToSave));
+    localStorage.setItem(SECRET_STORAGE_KEY, 'true'); // Mark that we've saved once
+    console.log('Parameters saved to local storage.');
+  } catch (e) {
+    console.error('Failed to save parameters to local storage:', e);
+  }
+}
+
+function loadParamsFromLocalStorage() {
+  try {
+    if (localStorage.getItem(SECRET_STORAGE_KEY)) {
+      const storedParamsString = localStorage.getItem(PARAMS_STORAGE_KEY);
+      if (storedParamsString) {
+        const loadedParams = JSON.parse(storedParamsString);
+        // Merge loaded params with defaults, preserving the generateApp function
+        // and ensuring all keys are present even if the stored version is older.
+        for (const key in loadedParams) {
+          if (params.hasOwnProperty(key) && key !== 'generateApp') {
+            params[key] = loadedParams[key];
+          }
+        }
+        console.log('Parameters loaded from local storage.');
+      }
+    } else {
+      // First run or secret key not found, save current (default) params
+      console.log('No secret key found. Saving default parameters to local storage.');
+      saveParamsToLocalStorage();
+    }
+  } catch (e) {
+    console.error('Failed to load or parse parameters from local storage:', e);
+    // If loading fails, proceed with defaults and save them
+    saveParamsToLocalStorage();
+  }
+}
+
+
+// ========= Scaled Value Getters =========
+const getScaledRadius = () => params.radius * params.globalScale;
+const getScaledNodeSize = () => params.nodeSize * params.globalScale;
+const getScaledCubeSize = () => params.cubeSize * params.globalScale;
+const getScaledLineThickness = () => params.lineThickness * params.globalScale;
+
+>>>>>>> 3D_Blockchain_Visualizer
+init();
+
+function init() {
+<<<<<<< HEAD
+  scene  = new THREE.Scene();
+
+  // Camera placed so +X (viewer-right) is truly screen-right
+  camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 1000);
+  camera.position.set(12, 8, 12);
+  camera.lookAt(0, 0, 0);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+=======
+  loadParamsFromLocalStorage(); // Load params before initializing anything else
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(10, 10, 10); 
+  camera.lookAt(0, 0, 0);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true }); 
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+>>>>>>> 3D_Blockchain_Visualizer
+  document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+
+  scene.add(new THREE.AmbientLight(0x888888));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.9);
+  dl.position.set(10, 10, 10);
+  scene.add(dl);
+
+  graphGroup  = new THREE.Group();
+  pulsesGroup = new THREE.Group();
+  scene.add(graphGroup, pulsesGroup);
+
+<<<<<<< HEAD
+  setupGUI();
+  window.addEventListener('resize', onResize);
+
+  rebuild();
+=======
+  setupGUI(); // GUI will now reflect loaded or default params
+  window.addEventListener('resize', onResize);
+  rebuild(); 
+>>>>>>> 3D_Blockchain_Visualizer
+  animate();
+}
+
+/* ───────────────────────────── GUI ───────────────────────────────── */
+function setupGUI() {
+  const gui = new GUI();
+<<<<<<< HEAD
+  gui.add(params, 'runAnimation').name('Run');
+  gui.add(params, 'nodeCount',   2, 50, 1).name('Nodes').onFinishChange(rebuild);
+  gui.add(params, 'radius',      2, 12, 0.2).name('Radius').onFinishChange(rebuild);
+  gui.add(params, 'nodeSize',    0.1, 1, 0.05).name('Node Size').onFinishChange(rebuild);
+  gui.addColor(params, 'nodeColor').name('Node Color').onFinishChange(rebuild);
+  gui.addColor(params, 'lineColor').name('Line Color').onFinishChange(rebuild);
+
+  gui.add(params, 'cubeSize',    0.05, 0.5, 0.01).name('Cube Size').onFinishChange(rebuild);
+  gui.add(params, 'cubeSpacing', 0.5, 2, 0.05).name('Cube Spacing').onFinishChange(rebuild);
+  gui.add(params, 'chainFade',   10, 300, 1).name('Ledger Length').onChange(() => {
+    pruneAllBranches();
+    alignAllBranches();
+  });
+
+  gui.add(params, 'maxBranches', 1, 6, 1).name('Max Branches');
+  gui.add(params, 'spawnChance', 0.05, 0.6, 0.05).name('Spawn Chance');
+  gui.add(params, 'mergeChance', 0.01, 0.5, 0.01).name('Merge Chance');
+  gui.add(params, 'pulseCount',  0, 64, 1).name('Pulse Count').onFinishChange(rebuildPulses);
+  gui.add(params, 'pulseSpeed',  0.05, 1, 0.01).name('Pulse Speed');
+}
+
+/* ─────────────────────── Build / Rebuild Logic ───────────────────── */
+=======
+
+  // Helper function to add a controller and attach save on change
+  function addControl(folderOrGui, paramKey, ...args) {
+    const controller = folderOrGui.add(params, paramKey, ...args);
+    controller.onChange(saveParamsToLocalStorage); // Save when this specific control changes
+    return controller;
+  }
+  function addColorControl(folderOrGui, paramKey, name) {
+    const controller = folderOrGui.addColor(params, paramKey).name(name);
+    controller.onChange(saveParamsToLocalStorage);
+    return controller;
+  }
+
+
+  const globalFolder = gui.addFolder('Global Settings');
+  addControl(globalFolder, 'globalScale', 0.1, 3.0, 0.01).name('Global Scale').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  
+  const structureFolder = gui.addFolder('Graph Structure');
+  addControl(structureFolder, 'nodeCount', 2, 50, 1).name('Node Count').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  addControl(structureFolder, 'radius', 1, 10, 0.1).name('Base Radius').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+
+  const nodeFolder = gui.addFolder('Node Appearance');
+  addColorControl(nodeFolder, 'nodeColor', 'Node Color').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  addControl(nodeFolder, 'nodeSize', 0.1, 1, 0.05).name('Base Node Size').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+
+  const cubeFolder = gui.addFolder('Cube Appearance');
+  addControl(cubeFolder, 'cubeSize', 0.05, 0.5, 0.01).name('Base Cube Size').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  addColorControl(cubeFolder, 'cubeInteriorColor', 'Cube Interior Color').onChange(() => {
+      if (!params.randomCubeColor) rebuildPulses();
+      saveParamsToLocalStorage();
+  });
+  addControl(cubeFolder, 'randomCubeColor').name('Random Cube Color').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); });
+
+  const lineFolder = gui.addFolder('Line Appearance');
+  addColorControl(lineFolder, 'lineColor', 'Line Color').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  addControl(lineFolder, 'lineThickness', 0.1, 10.0, 0.1).name('Base Line Thickness').onChange(() => { rebuild(); saveParamsToLocalStorage(); }); 
+  
+  const animationFolder = gui.addFolder('Animation & Interaction');
+  addControl(animationFolder, 'pulseCount', 0, 100, 1).name('Pulse Count').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); });
+  addControl(animationFolder, 'pulseSpeed', 0.05, 1, 0.01).name('Pulse Speed').onChange(saveParamsToLocalStorage); // No rebuild needed, just save
+  addControl(animationFolder, 'rotationXIncrement', -0.01, 0.01, 0.0001).name('Rotation X Incr.').onChange(saveParamsToLocalStorage);
+  addControl(animationFolder, 'rotationYIncrement', -0.01, 0.01, 0.0001).name('Rotation Y Incr.').onChange(saveParamsToLocalStorage);
+  addControl(animationFolder, 'rotationZIncrement', -0.01, 0.01, 0.0001).name('Rotation Z Incr.').onChange(saveParamsToLocalStorage);
+  addControl(animationFolder, 'nodeTakesPulseColor').name('Node Takes Pulse Color').onChange(saveParamsToLocalStorage);
+  
+  gui.add(params, 'generateApp').name('Generate Embeddable App'); // This one doesn't need to save params
+
+  document.getElementById('closeGeneratedCode').addEventListener('click', () => {
+    document.getElementById('generatedCodeContainer').style.display = 'none';
+  });
+
+  const copyButton = document.getElementById('copyGeneratedCode');
+  const codeOutputTextarea = document.getElementById('generatedCodeOutput');
+
+  copyButton.addEventListener('click', async () => {
+    codeOutputTextarea.focus(); 
+    codeOutputTextarea.select();
+    codeOutputTextarea.setSelectionRange(0, codeOutputTextarea.value.length + 1); 
+
+    let copied = false;
+    let primaryError = null;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(codeOutputTextarea.value);
+        copied = true;
+        copyButton.textContent = 'Copied!';
+      } catch (err) {
+        primaryError = err;
+        console.error('Clipboard API failed: ', err);
+        copyButton.textContent = 'API Copy Fail'; 
+      }
+    } else {
+        copyButton.textContent = 'No Clipboard API'; 
+        primaryError = new Error("navigator.clipboard.writeText not available.");
+    }
+
+    if (!copied) { 
+      console.log('Attempting fallback copy method...');
+      try {
+        codeOutputTextarea.focus();
+        codeOutputTextarea.select();
+        copied = document.execCommand('copy');
+        if (copied) {
+          copyButton.textContent = 'Copied (Fallback)!';
+        } else {
+          copyButton.textContent = 'Fallback Fail';
+          console.error('Fallback document.execCommand("copy") failed.');
+        }
+      } catch (err) {
+        console.error('Fallback copy method error: ', err);
+        copyButton.textContent = 'Fallback Error';
+      }
+    }
+    
+    if (!copied && primaryError) {
+        console.error('All copy methods failed. Primary error:', primaryError);
+    }
+
+    setTimeout(() => {
+      copyButton.textContent = 'Copy Code';
+    }, 2500); 
+  });
+}
+
+// ========= Platonic Solid Vertex Calculation =========
+function getPlatonicSolidVertices(count, radius) {
+    let points = [];
+    const p = (1 + Math.sqrt(5)) / 2; 
+    const ip = 1 / p; 
+
+    switch (count) {
+        case 4: 
+            points = [ new THREE.Vector3(1, 1, 1), new THREE.Vector3(1, -1, -1), new THREE.Vector3(-1, 1, -1), new THREE.Vector3(-1, -1, 1) ];
+            break;
+        case 6: 
+            points = [ new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1) ];
+            break;
+        case 8: 
+            points = [ new THREE.Vector3(1,1,1),new THREE.Vector3(1,1,-1),new THREE.Vector3(1,-1,1),new THREE.Vector3(1,-1,-1),new THREE.Vector3(-1,1,1),new THREE.Vector3(-1,1,-1),new THREE.Vector3(-1,-1,1),new THREE.Vector3(-1,-1,-1) ];
+            break;
+        case 12: 
+            const X_ico = 0.525731112119133606; const Z_ico = 0.850650808352039932;
+            points = [ new THREE.Vector3(-X_ico,0,Z_ico),new THREE.Vector3(X_ico,0,Z_ico),new THREE.Vector3(-X_ico,0,-Z_ico),new THREE.Vector3(X_ico,0,-Z_ico),new THREE.Vector3(0,Z_ico,X_ico),new THREE.Vector3(0,Z_ico,-X_ico),new THREE.Vector3(0,-Z_ico,X_ico),new THREE.Vector3(0,-Z_ico,-X_ico),new THREE.Vector3(Z_ico,X_ico,0),new THREE.Vector3(-Z_ico,X_ico,0),new THREE.Vector3(Z_ico,-X_ico,0),new THREE.Vector3(-Z_ico,-X_ico,0) ];
+            return points.map(pt => pt.multiplyScalar(radius));
+        case 20: 
+            points = [ new THREE.Vector3(1,1,1),new THREE.Vector3(1,1,-1),new THREE.Vector3(1,-1,1),new THREE.Vector3(1,-1,-1),new THREE.Vector3(-1,1,1),new THREE.Vector3(-1,1,-1),new THREE.Vector3(-1,-1,1),new THREE.Vector3(-1,-1,-1) ];
+            const p_coords = [ new THREE.Vector3(0,ip,p),new THREE.Vector3(0,ip,-p),new THREE.Vector3(0,-ip,p),new THREE.Vector3(0,-ip,-p),new THREE.Vector3(ip,p,0),new THREE.Vector3(ip,-p,0),new THREE.Vector3(-ip,p,0),new THREE.Vector3(-ip,-p,0),new THREE.Vector3(p,0,ip),new THREE.Vector3(p,0,-ip),new THREE.Vector3(-p,0,ip),new THREE.Vector3(-p,0,-ip) ];
+            p_coords.forEach(v => points.push(v));
+            break;
+        default: return [];
+    }
+    return points.map(pt => pt.normalize().multiplyScalar(radius));
+}
+
+// ========= Helper =========
+function makeCube(defaultColor, transparent = false) {
+  const s = getScaledCubeSize();
+  const geom = new THREE.BoxGeometry(s, s, s);
+  let chosenColorHex;
+  if (params.randomCubeColor) { 
+    chosenColorHex = COLORS[Math.floor(Math.random() * COLORS.length)];
+  } else {
+    chosenColorHex = new THREE.Color(defaultColor).getHex();
+  }
+
+  const fillMaterial = new THREE.MeshPhongMaterial({ color: chosenColorHex, emissive: chosenColorHex, transparent: transparent, opacity: transparent ? 0.15 : 1 });
+  const cubeMesh = new THREE.Mesh(geom, fillMaterial);
+  const edgeGeom = new THREE.EdgesGeometry(geom); 
+  const edgeMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: transparent, opacity: transparent ? 0.1 : 1 });
+  const edgeLines = new THREE.LineSegments(edgeGeom, edgeMat);
+  
+  const group = new THREE.Group();
+  group.add(cubeMesh); group.add(edgeLines);
+  group.userData = { color: chosenColorHex };
+  return group;
+}
+
+// ========= Build Graph =========
+>>>>>>> 3D_Blockchain_Visualizer
+function rebuild() {
+  buildGraph();
+  buildChains();
+  rebuildPulses();
+}
+
+function buildGraph() {
+  graphGroup.clear();
+<<<<<<< HEAD
+  nodes = []; edges = [];
+
+  const lineMat = new THREE.LineBasicMaterial({ color: params.lineColor });
+
+  // Golden-section spiral distribution
+  for (let i = 0; i < params.nodeCount; i++) {
+    const phi   = Math.acos(2 * i / params.nodeCount - 1);
+    const theta = Math.sqrt(params.nodeCount * Math.PI) * phi;
+
+    const pos = new THREE.Vector3(
+      params.radius * Math.sin(phi) * Math.cos(theta),
+      params.radius * Math.sin(phi) * Math.sin(theta),
+      params.radius * Math.cos(phi)
+    );
+
+    const sphere = new THREE.Mesh(
+      new THREE.SphereGeometry(params.nodeSize, 16, 16),
+      new THREE.MeshPhongMaterial({ color: params.nodeColor })
+    );
+    sphere.position.copy(pos);
+    graphGroup.add(sphere);
+    nodes.push(sphere);
+  }
+
+  // Fully-connected edges
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+=======
+  nodeMeshes = []; edges = [];
+  let nodePositions = [];
+  const currentRadius = getScaledRadius();
+  const currentNodeSize = getScaledNodeSize();
+  const currentLineThickness = getScaledLineThickness(); 
+  const platonicSolidVertexCounts = [4, 6, 8, 12, 20];
+  const isPlatonic = platonicSolidVertexCounts.includes(params.nodeCount);
+
+  if (isPlatonic) {
+    nodePositions = getPlatonicSolidVertices(params.nodeCount, currentRadius);
+  } else {
+    for (let i = 0; i < params.nodeCount; i++) {
+      const phi = Math.acos(-1 + (2 * i) / params.nodeCount);
+      const theta = Math.sqrt(params.nodeCount * Math.PI) * phi;
+      nodePositions.push(new THREE.Vector3( currentRadius * Math.sin(phi) * Math.cos(theta), currentRadius * Math.sin(phi) * Math.sin(theta), currentRadius * Math.cos(phi) ));
+    }
+  }
+
+  const lineMaterial = new THREE.LineBasicMaterial({ 
+      color: new THREE.Color(params.lineColor),
+      linewidth: currentLineThickness 
+    });
+  const nodeGeometry = new THREE.SphereGeometry(currentNodeSize, 16, 16);
+
+  nodePositions.forEach((pos, i) => {
+    const nodeMaterial = new THREE.MeshPhongMaterial({ color: new THREE.Color(params.nodeColor), emissive: new THREE.Color(params.nodeColor) });
+    const sphereMesh = new THREE.Mesh(nodeGeometry, nodeMaterial);
+    sphereMesh.position.copy(pos);
+    graphGroup.add(sphereMesh);
+    nodeMeshes.push(sphereMesh);
+    for (let j = i + 1; j < nodePositions.length; j++) {
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints([pos, nodePositions[j]]);
+      graphGroup.add(new THREE.Line(lineGeometry, lineMaterial));
+>>>>>>> 3D_Blockchain_Visualizer
+      edges.push({ from: i, to: j });
+      const line = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([nodes[i].position, nodes[j].position]),
+        lineMat
+      );
+      graphGroup.add(line);
+    }
+  }
+}
+
+/* ───────────────────────── Ledger / Branches ─────────────────────── */
+function buildChains() {
+  ledgerGroup.clear();
+  nodeChains = nodes.map(() => ({ heads: [], nextBranchColorIndex: 1 }));
+}
+
+function pruneAllBranches() {
+  nodeChains.forEach(chain => chain.heads.forEach(pruneBranch));
+}
+
+function getMain(chain) { return chain.heads[0]; }
+
+function createBranch(chain) {
+  const color = COLORS[chain.nextBranchColorIndex++ % COLORS.length];
+  const g     = new THREE.Group();
+  g.userData  = { yOffset: -chain.heads.length * spacing(), shiftX: 0, color };
+
+  const h = { group: g, blocks: [] };
+  chain.heads.push(h);
+  ledgerGroup.add(g);
+  return h;
+}
+
+function prependCommit(h) {
+  // Move existing blocks +X (viewer-right in local space)
+  h.blocks.forEach(b => { b.position.x += spacing(); });
+
+  // New cube at origin of branch
+  const cube = makeCube(h.group.userData.color);
+  h.group.add(cube);
+  h.blocks.unshift(cube);
+}
+
+function merge(chain, branch) {
+  const main   = getMain(chain);
+  const offset = main.blocks.length * spacing();
+
+  branch.blocks.forEach(b => {
+    b.position.x += offset;
+    main.group.add(b);
+    main.blocks.push(b);
+  });
+
+  ledgerGroup.remove(branch.group);
+  chain.heads.splice(chain.heads.indexOf(branch), 1);
+  pruneBranch(main);
+}
+
+function pruneBranch(h) {
+  while (h.blocks.length > params.chainFade) {
+    h.group.remove(h.blocks.pop());
+  }
+}
+
+function alignPositions(chain) {
+  const max = Math.max(...chain.heads.map(h => h.blocks.length), 0);
+  chain.heads.forEach(h => {
+    h.group.userData.shiftX = -(max - h.blocks.length) * spacing();
+  });
+}
+
+function alignAllBranches() { nodeChains.forEach(alignPositions); }
+
+function commit(idx) {
+  const chain = nodeChains[idx];
+  if (chain.heads.length === 0) { // ensure main branch
+    const main = createBranch(chain);
+    main.group.userData.yOffset = 0;
+    main.group.userData.color   = COLORS[0];
+  }
+
+  if (chain.heads.length < params.maxBranches && Math.random() < params.spawnChance) {
+    createBranch(chain);
+  }
+
+  const head = chain.heads[Math.floor(Math.random() * chain.heads.length)];
+  prependCommit(head);
+
+  if (head !== getMain(chain) && Math.random() < params.mergeChance) {
+    merge(chain, head);
+  }
+
+  pruneBranch(head);
+  alignPositions(chain);
+}
+
+/* ────────────────────────── Pulses on Edges ──────────────────────── */
+function rebuildPulses() {
+<<<<<<< HEAD
+  pulsesGroup.clear();
+  pulses = [];
+  if (edges.length === 0) return;
+
+  for (let i = 0; i < params.pulseCount; i++) {
+    const cube = makeCube(0xffffff);
+    const e    = edges[Math.floor(Math.random() * edges.length)];
+    cube.userData = { from: e.from, to: e.to, t: Math.random() };
+    updatePulse(cube, 0);
+    pulsesGroup.add(cube);
+    pulses.push(cube);
+  }
+}
+
+function updatePulse(p, dt) {
+  p.userData.t += params.pulseSpeed * dt;
+
+  if (p.userData.t >= 1) {
+    p.userData.t = 0;
+    commit(p.userData.to);
+
+    const adj = edges.filter(e => e.from === p.userData.to || e.to === p.userData.to);
+    const e   = adj[Math.floor(Math.random() * adj.length)];
+    p.userData.from = e.from === p.userData.to ? e.to : e.from;
+    p.userData.to   = e.from === p.userData.to ? e.from : e.to;
+  }
+
+  p.position.lerpVectors(
+    nodes[p.userData.from].position,
+    nodes[p.userData.to].position,
+    p.userData.t
+  );
+}
+
+/* ───────────────────── Position & Orientation Tick ───────────────── */
+function positionBranches() {
+  nodeChains.forEach((chain, idx) => {
+    nodes[idx].getWorldPosition(tmpV);
+
+    chain.heads.forEach(h => {
+      // Place branch origin at node, then offset in world space
+      h.group.position.set(
+        tmpV.x + h.group.userData.shiftX,
+        tmpV.y + h.group.userData.yOffset,
+        tmpV.z
+      );
+
+      /* Billboard: copy camera quaternion so branch plane faces viewer.
+         **NO EXTRA Z-ROTATION** – local +X is now screen-right. */
+      h.group.quaternion.copy(camera.quaternion);
+    });
+  });
+=======
+  pulsesGroup.clear(); pulses = [];
+  if (!edges.length || params.pulseCount === 0) return;
+  for (let i = 0; i < params.pulseCount; i++) {
+    const pulseCube = makeCube(params.cubeInteriorColor);
+    const edge = edges[Math.floor(Math.random() * edges.length)];
+    pulseCube.userData = { from: edge.from, to: edge.to, t: Math.random(), color: pulseCube.userData.color };
+    updatePulsePosition(pulseCube);
+    pulsesGroup.add(pulseCube);
+    pulses.push(pulseCube);
+  }
+}
+
+function updatePulsePosition(pulseCube) {
+  if (nodeMeshes[pulseCube.userData.from] && nodeMeshes[pulseCube.userData.to]) {
+    const startNodePos = nodeMeshes[pulseCube.userData.from].position;
+    const endNodePos = nodeMeshes[pulseCube.userData.to].position;
+    pulseCube.position.lerpVectors(startNodePos, endNodePos, pulseCube.userData.t);
+  }
+}
+
+function updatePulse(pulseCube, deltaTime) {
+  pulseCube.userData.t += params.pulseSpeed * deltaTime;
+  if (pulseCube.userData.t >= 1) {
+    const targetNodeIndex = pulseCube.userData.to;
+    const pulseActualColor = pulseCube.userData.color;
+    if (params.nodeTakesPulseColor && nodeMeshes[targetNodeIndex]) {
+        nodeMeshes[targetNodeIndex].material.color.setHex(pulseActualColor);
+        if (nodeMeshes[targetNodeIndex].material.emissive) {
+             nodeMeshes[targetNodeIndex].material.emissive.setHex(pulseActualColor);
+        }
+    }
+    pulseCube.userData.t = 0;
+    const connectedEdges = edges.filter(e => e.from === targetNodeIndex || e.to === targetNodeIndex);
+    let nextEdge;
+    if (connectedEdges.length > 0) {
+        nextEdge = connectedEdges[Math.floor(Math.random() * connectedEdges.length)];
+        pulseCube.userData.from = targetNodeIndex; 
+        pulseCube.userData.to = (nextEdge.from === targetNodeIndex) ? nextEdge.to : nextEdge.from;
+    } else if (edges.length > 0) {
+        nextEdge = edges[Math.floor(Math.random() * edges.length)];
+        pulseCube.userData.from = nextEdge.from; pulseCube.userData.to = nextEdge.to;
+    } else { return; }
+  }
+  updatePulsePosition(pulseCube);
+>>>>>>> 3D_Blockchain_Visualizer
+}
+
+/* ───────────────────────────── Loop ──────────────────────────────── */
+function animate() {
+  requestAnimationFrame(animate);
+<<<<<<< HEAD
+  const dt = clock.getDelta();
+
+  pulses.forEach(p => updatePulse(p, dt));
+
+  if (params.runAnimation) {
+    graphGroup.rotation.y += 0.003;
+    pulsesGroup.rotation.y = graphGroup.rotation.y;
+  }
+=======
+  const deltaTime = clock.getDelta();
+  pulses.forEach(p => updatePulse(p, deltaTime));
+  
+  graphGroup.rotation.x += params.rotationXIncrement; 
+  graphGroup.rotation.y += params.rotationYIncrement; 
+  graphGroup.rotation.z += params.rotationZIncrement; 
+  pulsesGroup.rotation.copy(graphGroup.rotation); 
+>>>>>>> 3D_Blockchain_Visualizer
+
+  positionBranches();
+  renderer.render(scene, camera);
+}
+
+/* ────────────────────────── Resize Handler ───────────────────────── */
+function onResize() {
+<<<<<<< HEAD
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+=======
+  if (!renderer || !camera) return;
+  const width = window.innerWidth; 
+  const height = window.innerHeight;
+
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height);
+>>>>>>> 3D_Blockchain_Visualizer
+}
+
+// ========= Embeddable App Generator =========
+function generateEmbeddableApp() {
+    const generatedParams = JSON.parse(JSON.stringify(params)); 
+    delete generatedParams.generateApp; 
+
+    const generatedCode = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Embeddable 3D Node Simulation</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #simulation-canvas-container { 
+        width: 100%; 
+        height: 500px; /* Default height, user can change */
+        position: relative;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <div id="simulation-canvas-container"></div>
+
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.module.js';
+
+    // --- BEGIN USER-CONFIGURABLE PARAMETERS ---
+    const config = ${JSON.stringify(generatedParams, null, 2)};
+    const EMBED_COLORS = [${COLORS.map(c => "0x" + c.toString(16).padStart(6, '0')).join(', ')}];
+    // --- END USER-CONFIGURABLE PARAMETERS ---
+
+    let scene_embed, camera_embed, renderer_embed;
+    let graphGroup_embed, pulsesGroup_embed;
+    let nodeMeshes_embed = [];
+    let edges_embed = [], pulses_embed = [];
+    const clock_embed = new THREE.Clock();
+    let animationFrameId_embed;
+
+    const getScaledRadius_embed = () => config.radius * config.globalScale;
+    const getScaledNodeSize_embed = () => config.nodeSize * config.globalScale;
+    const getScaledCubeSize_embed = () => config.cubeSize * config.globalScale;
+    const getScaledLineThickness_embed = () => config.lineThickness * config.globalScale;
+
+    function init_embed() {
+      const container = document.getElementById('simulation-canvas-container');
+      if (!container) {
+        console.error('Container #simulation-canvas-container not found.');
+        return;
+      }
+
+      scene_embed = new THREE.Scene();
+      camera_embed = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera_embed.position.set(10, 10, 10); 
+      camera_embed.lookAt(0, 0, 0);
+
+      renderer_embed = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer_embed.setPixelRatio(window.devicePixelRatio);
+      renderer_embed.setSize(container.clientWidth, container.clientHeight);
+      renderer_embed.setClearColor(0x000000, 0); 
+      container.appendChild(renderer_embed.domElement);
+
+      scene_embed.add(new THREE.AmbientLight(0xcccccc));
+      const dl_embed = new THREE.DirectionalLight(0xffffff, 0.7);
+      dl_embed.position.set(10 * config.globalScale, 10 * config.globalScale, 10 * config.globalScale);
+      scene_embed.add(dl_embed);
+
+      graphGroup_embed = new THREE.Group();
+      pulsesGroup_embed = new THREE.Group();
+      scene_embed.add(graphGroup_embed, pulsesGroup_embed);
+
+      window.addEventListener('resize', onResize_embed);
+      rebuild_embed();
+      if (animationFrameId_embed) cancelAnimationFrame(animationFrameId_embed);
+      animate_embed();
+    }
+
+    function getPlatonicSolidVertices_embed(count, radius) {
+        let points = []; const p = (1 + Math.sqrt(5)) / 2; const ip = 1 / p;
+        switch (count) {
+            case 4: points = [ new THREE.Vector3(1,1,1),new THREE.Vector3(1,-1,-1),new THREE.Vector3(-1,1,-1),new THREE.Vector3(-1,-1,1) ]; break;
+            case 6: points = [ new THREE.Vector3(1,0,0),new THREE.Vector3(-1,0,0),new THREE.Vector3(0,1,0),new THREE.Vector3(0,-1,0),new THREE.Vector3(0,0,1),new THREE.Vector3(0,0,-1) ]; break;
+            case 8: points = [ new THREE.Vector3(1,1,1),new THREE.Vector3(1,1,-1),new THREE.Vector3(1,-1,1),new THREE.Vector3(1,-1,-1),new THREE.Vector3(-1,1,1),new THREE.Vector3(-1,1,-1),new THREE.Vector3(-1,-1,1),new THREE.Vector3(-1,-1,-1) ]; break;
+            case 12: const X_ico=0.525731112119133606; const Z_ico=0.850650808352039932; points = [ new THREE.Vector3(-X_ico,0,Z_ico),new THREE.Vector3(X_ico,0,Z_ico),new THREE.Vector3(-X_ico,0,-Z_ico),new THREE.Vector3(X_ico,0,-Z_ico),new THREE.Vector3(0,Z_ico,X_ico),new THREE.Vector3(0,Z_ico,-X_ico),new THREE.Vector3(0,-Z_ico,X_ico),new THREE.Vector3(0,-Z_ico,-X_ico),new THREE.Vector3(Z_ico,X_ico,0),new THREE.Vector3(-Z_ico,X_ico,0),new THREE.Vector3(Z_ico,-X_ico,0),new THREE.Vector3(-Z_ico,-X_ico,0) ]; return points.map(pt=>pt.multiplyScalar(radius));
+            case 20: points = [ new THREE.Vector3(1,1,1),new THREE.Vector3(1,1,-1),new THREE.Vector3(1,-1,1),new THREE.Vector3(1,-1,-1),new THREE.Vector3(-1,1,1),new THREE.Vector3(-1,1,-1),new THREE.Vector3(-1,-1,1),new THREE.Vector3(-1,-1,-1) ]; const p_coords = [ new THREE.Vector3(0,ip,p),new THREE.Vector3(0,ip,-p),new THREE.Vector3(0,-ip,p),new THREE.Vector3(0,-ip,-p),new THREE.Vector3(ip,p,0),new THREE.Vector3(ip,-p,0),new THREE.Vector3(-ip,p,0),new THREE.Vector3(-ip,-p,0),new THREE.Vector3(p,0,ip),new THREE.Vector3(p,0,-ip),new THREE.Vector3(-p,0,ip),new THREE.Vector3(-p,0,-ip) ]; p_coords.forEach(v=>points.push(v)); break;
+            default: return [];
+        }
+        return points.map(pt => pt.normalize().multiplyScalar(radius));
+    }
+
+    function makeCube_embed(defaultColor) {
+      const s = getScaledCubeSize_embed();
+      const geom = new THREE.BoxGeometry(s,s,s);
+      let chosenColorHex;
+      if (config.randomCubeColor) { chosenColorHex = EMBED_COLORS[Math.floor(Math.random() * EMBED_COLORS.length)]; }
+      else { chosenColorHex = new THREE.Color(defaultColor).getHex(); }
+      const fillMaterial = new THREE.MeshPhongMaterial({color:chosenColorHex, emissive:chosenColorHex});
+      const cubeMesh = new THREE.Mesh(geom, fillMaterial);
+      const edgeGeom = new THREE.EdgesGeometry(geom);
+      const edgeMat = new THREE.LineBasicMaterial({color:0x000000});
+      const edgeLines = new THREE.LineSegments(edgeGeom, edgeMat);
+      const group = new THREE.Group(); group.add(cubeMesh); group.add(edgeLines);
+      group.userData = {color: chosenColorHex}; return group;
+    }
+
+    function rebuild_embed() { buildGraph_embed(); rebuildPulses_embed(); }
+
+    function buildGraph_embed() {
+      graphGroup_embed.clear(); nodeMeshes_embed = []; edges_embed = [];
+      let nodePositions = [];
+      const currentRadius = getScaledRadius_embed();
+      const currentNodeSize = getScaledNodeSize_embed();
+      const currentLineThickness = getScaledLineThickness_embed(); 
+      const platonicSolidVertexCounts = [4,6,8,12,20];
+      const isPlatonic = platonicSolidVertexCounts.includes(config.nodeCount);
+      if (isPlatonic) { nodePositions = getPlatonicSolidVertices_embed(config.nodeCount, currentRadius); }
+      else {
+        for (let i=0; i<config.nodeCount; i++) {
+          const phi = Math.acos(-1 + (2*i)/config.nodeCount);
+          const theta = Math.sqrt(config.nodeCount * Math.PI) * phi;
+          nodePositions.push(new THREE.Vector3(currentRadius*Math.sin(phi)*Math.cos(theta), currentRadius*Math.sin(phi)*Math.sin(theta), currentRadius*Math.cos(phi)));
+        }
+      }
+      const lineMaterial = new THREE.LineBasicMaterial({
+          color: new THREE.Color(config.lineColor),
+          linewidth: currentLineThickness 
+        });
+      const nodeGeometry = new THREE.SphereGeometry(currentNodeSize,16,16);
+      nodePositions.forEach((pos,i) => {
+        const nodeMaterial = new THREE.MeshPhongMaterial({color: new THREE.Color(config.nodeColor), emissive: new THREE.Color(config.nodeColor)});
+        const sphereMesh = new THREE.Mesh(nodeGeometry, nodeMaterial);
+        sphereMesh.position.copy(pos); graphGroup_embed.add(sphereMesh); nodeMeshes_embed.push(sphereMesh);
+        for (let j=i+1; j<nodePositions.length; j++) {
+          const lineGeom = new THREE.BufferGeometry().setFromPoints([pos, nodePositions[j]]);
+          graphGroup_embed.add(new THREE.Line(lineGeom, lineMaterial)); edges_embed.push({from:i,to:j});
+        }
+      });
+    }
+
+    function rebuildPulses_embed() {
+      pulsesGroup_embed.clear(); pulses_embed = [];
+      if (!edges_embed.length || config.pulseCount === 0) return;
+      for (let i=0; i<config.pulseCount; i++) {
+        const pulseCube = makeCube_embed(config.cubeInteriorColor);
+        const edge = edges_embed[Math.floor(Math.random()*edges_embed.length)];
+        pulseCube.userData = {from:edge.from, to:edge.to, t:Math.random(), color:pulseCube.userData.color};
+        updatePulsePosition_embed(pulseCube); pulsesGroup_embed.add(pulseCube); pulses_embed.push(pulseCube);
+      }
+    }
+
+    function updatePulsePosition_embed(pulseCube) {
+      if (nodeMeshes_embed[pulseCube.userData.from] && nodeMeshes_embed[pulseCube.userData.to]) {
+        const start = nodeMeshes_embed[pulseCube.userData.from].position;
+        const end = nodeMeshes_embed[pulseCube.userData.to].position;
+        pulseCube.position.lerpVectors(start,end,pulseCube.userData.t);
+      }
+    }
+
+    function updatePulse_embed(pulseCube, deltaTime) {
+      pulseCube.userData.t += config.pulseSpeed * deltaTime;
+      if (pulseCube.userData.t >= 1) {
+        const targetIdx = pulseCube.userData.to;
+        const color = pulseCube.userData.color;
+        if (config.nodeTakesPulseColor && nodeMeshes_embed[targetIdx]) {
+          nodeMeshes_embed[targetIdx].material.color.setHex(color);
+          if(nodeMeshes_embed[targetIdx].material.emissive) nodeMeshes_embed[targetIdx].material.emissive.setHex(color);
+        }
+        pulseCube.userData.t = 0;
+        const connected = edges_embed.filter(e => e.from === targetIdx || e.to === targetIdx);
+        let nextEdge;
+        if (connected.length > 0) { nextEdge = connected[Math.floor(Math.random()*connected.length)]; pulseCube.userData.from = targetIdx; pulseCube.userData.to = (nextEdge.from === targetIdx) ? nextEdge.to : nextEdge.from; }
+        else if (edges_embed.length > 0) { nextEdge = edges_embed[Math.floor(Math.random()*edges_embed.length)]; pulseCube.userData.from = nextEdge.from; pulseCube.userData.to = nextEdge.to; }
+        else { return; }
+      }
+      updatePulsePosition_embed(pulseCube);
+    }
+
+    function animate_embed() {
+      animationFrameId_embed = requestAnimationFrame(animate_embed);
+      const dt = clock_embed.getDelta();
+      pulses_embed.forEach(p => updatePulse_embed(p, dt));
+      
+      graphGroup_embed.rotation.x += config.rotationXIncrement; 
+      graphGroup_embed.rotation.y += config.rotationYIncrement; 
+      graphGroup_embed.rotation.z += config.rotationZIncrement; 
+      pulsesGroup_embed.rotation.copy(graphGroup_embed.rotation);
+
+      renderer_embed.render(scene_embed, camera_embed);
+    }
+
+    function onResize_embed() {
+      const container = document.getElementById('simulation-canvas-container');
+      if (!renderer_embed || !camera_embed || !container) return;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      camera_embed.aspect = width / height;
+      camera_embed.updateProjectionMatrix();
+      renderer_embed.setSize(width, height);
+    }
+
+    // --- BEGIN SIMULATION API ---
+    window.simulationAPI = {
+      updateConfig: function(newConfigUpdates) {
+        let needsRebuild = false;
+        let needsRebuildPulses = false;
+        let needsNodeColorUpdate = false;
+        let needsLineColorUpdate = false; 
+
+        for (const key in newConfigUpdates) {
+            if (config.hasOwnProperty(key)) {
+                config[key] = newConfigUpdates[key]; 
+
+                if (['globalScale', 'nodeCount', 'radius', 'nodeSize', 'cubeSize', 'lineThickness'].includes(key)) {
+                    needsRebuild = true;
+                } else if (key === 'nodeColor') {
+                    needsNodeColorUpdate = true;
+                } else if (key === 'lineColor') { 
+                    needsLineColorUpdate = true;
+                } else if (['pulseCount', 'cubeInteriorColor', 'randomCubeColor'].includes(key)) {
+                    if (key === 'cubeInteriorColor' && config.randomCubeColor) { /* no action */ }
+                    else { needsRebuildPulses = true; }
+                }
+            } else {
+                console.warn(\`simulationAPI.updateConfig: Unknown config key "\${key}"\`);
+            }
+        }
+
+        if (needsRebuild) {
+            rebuild_embed(); 
+        } else { 
+            if (needsRebuildPulses) {
+                rebuildPulses_embed();
+            }
+            if (needsNodeColorUpdate && nodeMeshes_embed) {
+                const colorObj = new THREE.Color(config.nodeColor);
+                nodeMeshes_embed.forEach(mesh => { 
+                    mesh.material.color.set(colorObj);
+                    if(mesh.material.emissive) mesh.material.emissive.set(colorObj);
+                });
+            }
+            if (needsLineColorUpdate && graphGroup_embed) { 
+                const colorObj = new THREE.Color(config.lineColor);
+                graphGroup_embed.children.forEach(child => {
+                    if (child instanceof THREE.Line && child.material instanceof THREE.LineBasicMaterial) {
+                        child.material.color.set(colorObj);
+                    }
+                });
+            }
+        }
+      },
+      setGlobalScale: function(value) { this.updateConfig({ globalScale: value }); },
+      setNodeCount: function(value) { this.updateConfig({ nodeCount: value }); },
+      setNodeColor: function(hexString) { this.updateConfig({ nodeColor: hexString }); },
+      setLineColor: function(hexString) { this.updateConfig({ lineColor: hexString }); },
+      setLineThickness: function(value) { this.updateConfig({ lineThickness: value }); },
+      setRadius: function(value) { this.updateConfig({ radius: value }); },
+      setNodeSize: function(value) { this.updateConfig({ nodeSize: value }); },
+      setCubeSize: function(value) { this.updateConfig({ cubeSize: value }); },
+      setPulseCount: function(value) { this.updateConfig({ pulseCount: value }); },
+      setPulseSpeed: function(value) { this.updateConfig({ pulseSpeed: value }); },
+      setRotationXIncrement: function(value) { this.updateConfig({ rotationXIncrement: value }); },
+      setRotationYIncrement: function(value) { this.updateConfig({ rotationYIncrement: value }); },
+      setRotationZIncrement: function(value) { this.updateConfig({ rotationZIncrement: value }); },
+      setCubeInteriorColor: function(hexString) { this.updateConfig({ cubeInteriorColor: hexString }); },
+      setRandomCubeColor: function(booleanValue) { this.updateConfig({ randomCubeColor: booleanValue }); },
+      setNodeTakesPulseColor: function(booleanValue) { this.updateConfig({ nodeTakesPulseColor: booleanValue }); },
+      
+      getCurrentConfig: function() { return JSON.parse(JSON.stringify(config)); }
+    };
+    // --- END SIMULATION API ---
+
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init_embed);
+    } else {
+        init_embed();
+    }
+    
+    window.cleanupSimulation = () => {
+        if (animationFrameId_embed) cancelAnimationFrame(animationFrameId_embed);
+        window.removeEventListener('resize', onResize_embed);
+        if (renderer_embed && renderer_embed.domElement && renderer_embed.domElement.parentElement) {
+            renderer_embed.domElement.parentElement.removeChild(renderer_embed.domElement);
+        }
+        if (renderer_embed) renderer_embed.dispose();
+        scene_embed = null; camera_embed = null; renderer_embed = null; 
+        graphGroup_embed = null; pulsesGroup_embed = null;
+        nodeMeshes_embed = []; edges_embed = []; pulses_embed = [];
+    };
+
+  <\/script> 
+</body>
+</html>
+`; 
+
+    const codeOutputTextarea = document.getElementById('generatedCodeOutput');
+    const codeContainerDiv = document.getElementById('generatedCodeContainer');
+    
+    codeOutputTextarea.value = generatedCode;
+    codeContainerDiv.style.display = 'block';
+
+    console.log("Generated embeddable app code is ready in the text area on the page.");
+    alert("Generated embeddable app code is now available in the text area on the page. You can copy it from there.");
+}
+
+
+</script>
+</body>
+</html>
+
