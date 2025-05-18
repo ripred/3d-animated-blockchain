@@ -181,10 +181,15 @@ function init() {
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000); // Increased far plane for starfield
   camera.position.set(10 * params.globalScale, 10 * params.globalScale, 15 * params.globalScale);
   camera.lookAt(0, 0, 0);
+  // Ensure camera is far enough to see the entire scene
+  if (params.radius > 5) {
+    camera.position.z = 20 * params.globalScale;
+  }
 
-  renderer = new THREE.WebGLRenderer({ antialias: true }); 
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); 
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, params.backgroundMode === 'Starfield' ? 1 : 0); // Set initial clear color and alpha
   renderer.shadowMap.enabled = true; 
   renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
   document.getElementById('canvas-container').appendChild(renderer.domElement);
@@ -213,13 +218,37 @@ function init() {
   pulseTrailsGroup = new THREE.Group(); // For pulse trails
   scene.add(graphGroup, pulsesGroup, starFieldGroup, pulseTrailsGroup);
 
+  // Create starfield first if needed, then update background
   if (params.backgroundMode === 'Starfield') buildStarfield();
-
-  updateBackground(); // Set initial background after starFieldGroup exists
+  
+  // Only call updateBackground after starfield is built
+  updateBackground(); // Set initial background
 
   setupGUI(); 
   window.addEventListener('resize', onResize);
   rebuild(); 
+  
+  // Debug info
+  console.log("Scene initialization:", {
+    "Camera position": camera.position,
+    "Renderer initialized": !!renderer,
+    "Scene children count": scene.children.length,
+    "Groups visible": {
+      "graphGroup": graphGroup.visible,
+      "pulsesGroup": pulsesGroup.visible,
+      "starFieldGroup": starFieldGroup.visible,
+      "pulseTrailsGroup": pulseTrailsGroup.visible
+    },
+    "Background mode": params.backgroundMode,
+    "Node count": params.nodeCount
+  });
+  
+  // Force initial render
+  if (renderer && scene && camera) {
+    console.log("Forcing initial render");
+    renderer.render(scene, camera);
+  }
+  
   animate();
 }
 
@@ -233,6 +262,11 @@ function updateBackground() {
         starFieldGroup.visible = true;
         if (starFieldGroup.children.length === 0) buildStarfield(); // Build if not already built
     }
+    // Make sure other groups are visible
+    graphGroup.visible = true;
+    pulsesGroup.visible = true;
+    pulseTrailsGroup.visible = true;
+    
     if(renderer) renderer.setClearAlpha(params.backgroundMode === 'Starfield' ? 1 : 0); // Make renderer bg transparent if starfield is on
 }
 
@@ -394,6 +428,16 @@ function makeCube(defaultColor, isTrailSegment = false, trailOpacity = 1.0) {
 
 // ========= Build Graph =========
 function rebuild() {
+  // Clear all groups first to ensure a fresh rebuild
+  graphGroup.clear();
+  pulsesGroup.clear();
+  pulseTrailsGroup.clear();
+  
+  // Ensure all groups are visible
+  graphGroup.visible = true;
+  pulsesGroup.visible = true;
+  pulseTrailsGroup.visible = true;
+  
   updateBackground(); // Ensure background is correct on rebuild
   if (starFieldGroup.children.length > 0 && params.backgroundMode === 'Starfield') buildStarfield(); // Rebuild stars on scale changes etc.
 
@@ -410,14 +454,24 @@ function rebuild() {
   if(hemisphereLight) {
     hemisphereLight.position.set(0, 20 * params.globalScale, 0);
   }
-   if (camera) { // Adjust camera position slightly with global scale to keep scene in view
-        camera.position.set(10 * params.globalScale, 10 * params.globalScale, 15 * params.globalScale);
-        camera.lookAt(0,0,0);
+  
+  if (camera) { // Adjust camera position with global scale to keep scene in view
+    let zPosition = 15 * params.globalScale;
+    // Ensure camera is far enough to see the entire scene based on radius
+    if (params.radius > 5) {
+      zPosition = 20 * params.globalScale;
     }
-
+    camera.position.set(10 * params.globalScale, 10 * params.globalScale, zPosition);
+    camera.lookAt(0,0,0);
+  }
 
   buildGraph();
   rebuildPulses();
+  
+  // Force a render after rebuilding
+  if (renderer) {
+    renderer.render(scene, camera);
+  }
 }
 
 function buildGraph() {
@@ -519,12 +573,23 @@ function updatePulsePosition(pulseCube) {
 
         // Update opacity and position of existing segments (optional, could just fade and remove)
         trailSegments.forEach((segment, index) => {
-            segment.material.opacity = (1.0 - (index / maxTrailLength)) * 0.4; // Fade further back
-            if(segment.material.opacity <= 0.01) { // Remove if too faint
-                 pulseTrailsGroup.remove(segment);
-                 if (segment.geometry) segment.geometry.dispose();
-                 if (segment.material) segment.material.dispose();
-                 pulseCube.userData.trailSegments.splice(index, 1);
+            // Check if segment and its material exist before setting properties
+            if (segment && segment.children && segment.children.length > 0) {
+                // Get the first child which has the material (the cube mesh)
+                const cubeMesh = segment.children[0];
+                if (cubeMesh && cubeMesh.material) {
+                    cubeMesh.material.opacity = (1.0 - (index / maxTrailLength)) * 0.4; // Fade further back
+                    
+                    // If too faint, remove the segment
+                    if(cubeMesh.material.opacity <= 0.01) {
+                        pulseTrailsGroup.remove(segment);
+                        segment.children.forEach(child => {
+                            if (child.geometry) child.geometry.dispose();
+                            if (child.material) child.material.dispose();
+                        });
+                        pulseCube.userData.trailSegments.splice(index, 1);
+                    }
+                }
             }
         });
     }
@@ -574,6 +639,14 @@ function animate() {
   const deltaTime = clock.getDelta();
   const time = clock.getElapsedTime();
 
+  // Ensure all groups are visible on each frame
+  graphGroup.visible = true;
+  pulsesGroup.visible = true;
+  pulseTrailsGroup.visible = true;
+  if (params.backgroundMode === 'Starfield') {
+    starFieldGroup.visible = true;
+  }
+
   pulses.forEach(p => updatePulse(p, deltaTime));
   
   if (params.nodePulsationEnabled && nodeMeshes.length > 0) {
@@ -597,11 +670,24 @@ function animate() {
   pulsesGroup.rotation.copy(graphGroup.rotation); 
   pulseTrailsGroup.rotation.copy(graphGroup.rotation); // Rotate trails with graph
 
-  renderer.render(scene, camera);
+  // Check if rendering is working properly
+  if (renderer && scene && camera) {
+    renderer.render(scene, camera);
+  } else {
+    console.error("Renderer, scene, or camera not initialized properly");
+  }
 }
 
 // ========= Resize =========
-function onResize() { /* ... (unchanged) ... */ }
+function onResize() {
+  if (camera && renderer) {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    // Force a render after resize
+    renderer.render(scene, camera);
+  }
+}
 
 // ========= Embeddable App Generator =========
 function generateEmbeddableApp() { /* ... (unchanged but would need to include new params) ... */ 
