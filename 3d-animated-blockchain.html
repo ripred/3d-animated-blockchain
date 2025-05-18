@@ -369,7 +369,14 @@ function updateBackground() {
 }
 
 function buildStarfield() {
+    // Dispose existing star geometries and materials before clearing the group
+    starFieldGroup.children.forEach(child => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+    });
     starFieldGroup.clear();
+
+    // Create fresh geometry and material for the new stars
     const starGeometry = new THREE.BufferGeometry();
     const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05 * params.globalScale, sizeAttenuation: true });
     const starVertices = [];
@@ -885,7 +892,14 @@ function generateEmbeddableApp() { /* ... (unchanged but would need to include n
 
     function buildStarfield_embed() {
         if(!starFieldGroup_embed) return;
+        // Dispose existing star geometries and materials before clearing the group
+        starFieldGroup_embed.children.forEach(child => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) child.material.dispose();
+        });
         starFieldGroup_embed.clear();
+
+        // Create fresh geometry and material for the new stars
         const starGeometry = new THREE.BufferGeometry();
         const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05 * config.globalScale, sizeAttenuation: true });
         const starVertices = [];
