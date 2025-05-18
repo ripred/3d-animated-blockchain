@@ -148,7 +148,10 @@ const params = {
   pulseTrailEnabled: true,
   pulseTrailLength: 8, // Number of segments in the trail
 
-  generateApp: function() { generateEmbeddableApp(); } 
+  // Debugging
+  debug: false,
+
+  generateApp: function() { generateEmbeddableApp(); }
 };
 
 // ========= Local Storage Functions =========
@@ -174,10 +177,10 @@ function loadParamsFromLocalStorage() {
             params[key] = loadedParams[key];
           }
         }
-        console.log('Parameters loaded from local storage.');
+        if (params.debug) console.log('Parameters loaded from local storage.');
       }
     } else {
-      console.log('No secret key found. Saving default parameters to local storage.');
+      if (params.debug) console.log('No secret key found. Saving default parameters to local storage.');
       saveParamsToLocalStorage();
     }
   } catch (e) {
@@ -327,7 +330,7 @@ function init() {
   rebuild(); 
   
   // Debug info
-  console.log("Scene initialization:", {
+  if (params.debug) console.log("Scene initialization:", {
     "Camera position": camera.position,
     "Renderer initialized": !!renderer,
     "Scene children count": scene.children.length,
@@ -343,7 +346,7 @@ function init() {
   
   // Force initial render
   if (renderer && scene && camera) {
-    console.log("Forcing initial render");
+    if (params.debug) console.log("Forcing initial render");
     renderer.render(scene, camera);
   }
   
@@ -481,7 +484,10 @@ function setupGUI() {
   addControl(animationFolder, 'nodeTakesPulseColor').name('Node Takes Pulse Color').onChange(saveParamsToLocalStorage);
   addControl(animationFolder, 'pulseTrailEnabled').name('Enable Pulse Trails').onChange(() => { rebuildPulses(); saveParamsToLocalStorage();}); // Rebuild pulses to add/remove trail logic
   addControl(animationFolder, 'pulseTrailLength').name('Trail Length').onChange(() => { rebuildPulses(); saveParamsToLocalStorage();});
-  
+
+  const debugFolder = gui.addFolder('Debugging');
+  addControl(debugFolder, 'debug').name('Enable Debug');
+
   gui.add(params, 'generateApp').name('Generate Embeddable App');
 
   document.getElementById('closeGeneratedCode').addEventListener('click', () => {
@@ -1377,7 +1383,7 @@ function generateEmbeddableApp() {
     codeOutputTextarea.value = generatedCode; // Ensure this contains the fully fleshed-out template
     codeContainerDiv.style.display = 'block';
 
-    console.log("Generated embeddable app code is ready in the text area on the page.");
+    if (params.debug) console.log("Generated embeddable app code is ready in the text area on the page.");
     alert("Generated embeddable app code is now available in the text area on the page. You can copy it from there.");
 }
 </script>
