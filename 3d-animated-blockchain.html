@@ -177,10 +177,9 @@ function init() {
   loadParamsFromLocalStorage(); 
 
   scene = new THREE.Scene();
-  updateBackground(); // Set initial background
 
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000); // Increased far plane for starfield
-  camera.position.set(10 * params.globalScale, 10 * params.globalScale, 15 * params.globalScale); 
+  camera.position.set(10 * params.globalScale, 10 * params.globalScale, 15 * params.globalScale);
   camera.lookAt(0, 0, 0);
 
   renderer = new THREE.WebGLRenderer({ antialias: true }); 
@@ -215,6 +214,8 @@ function init() {
   scene.add(graphGroup, pulsesGroup, starFieldGroup, pulseTrailsGroup);
 
   if (params.backgroundMode === 'Starfield') buildStarfield();
+
+  updateBackground(); // Set initial background after starFieldGroup exists
 
   setupGUI(); 
   window.addEventListener('resize', onResize);
