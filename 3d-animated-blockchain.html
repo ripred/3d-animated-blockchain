@@ -73,7 +73,30 @@ let graphGroup, pulsesGroup, starFieldGroup, pulseTrailsGroup; // New groups
 let nodeMeshes = [];
 let edges = [], pulses = [];
 const clock = new THREE.Clock();
-let directionalLight, hemisphereLight; 
+let directionalLight, hemisphereLight;
+
+// Mouse control variables
+let mouseDown = false;
+let mouseX = 0, mouseY = 0;
+let targetRotationX = 0, targetRotationY = 0;
+let targetRotationOnMouseDownX = 0, targetRotationOnMouseDownY = 0;
+let mouseXOnMouseDown = 0, mouseYOnMouseDown = 0;
+let windowHalfX = window.innerWidth / 2;
+let windowHalfY = window.innerHeight / 2;
+let cameraDistance = 15; // Initial camera distance
+
+// Function to update camera position based on target rotations
+function updateCameraPosition() {
+  // Calculate position based on spherical coordinates
+  const phi = Math.PI/2 - targetRotationY; // Convert from -π/2 to π/2 range to 0 to π range
+  const theta = targetRotationX;
+  
+  camera.position.x = cameraDistance * Math.sin(phi) * Math.sin(theta);
+  camera.position.y = cameraDistance * Math.cos(phi);
+  camera.position.z = cameraDistance * Math.sin(phi) * Math.cos(theta);
+  
+  camera.lookAt(scene.position);
+}
 
 // Colors for random cubes
 const COLORS = [0xff0000, 0x2196f3, 0xffc107, 0x9c27b0, 0x4caf50, 0xf44336, 0xe91e63, 0x673ab7, 0x00bcd4, 0x8bc34a];
@@ -90,6 +113,7 @@ const params = {
   backgroundColor: '#222222',
   cameraAutoRotate: false,
   cameraAutoRotateSpeed: 0.0005,
+  enableMouseControls: true, // Enable/disable mouse controls
 
   // Graph Structure
   nodeCount: 12,
@@ -193,7 +217,81 @@ function init() {
   renderer.shadowMap.enabled = true; 
   renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
   document.getElementById('canvas-container').appendChild(renderer.domElement);
-
+  
+  // Set up mouse event listeners
+  const canvas = renderer.domElement;
+  
+  // Initial camera distance 
+  cameraDistance = 15 * params.globalScale;
+  if (params.radius > 5) {
+    cameraDistance = 20 * params.globalScale;
+  }
+  
+  // Initialize target rotations based on camera position
+  targetRotationX = Math.PI / 4; // 45 degrees - a good starting angle
+  
+  function onMouseDown(event) {
+    if (!params.enableMouseControls) return;
+    
+    event.preventDefault();
+    mouseDown = true;
+    
+    mouseXOnMouseDown = event.clientX - windowHalfX;
+    mouseYOnMouseDown = event.clientY - windowHalfY;
+    targetRotationOnMouseDownX = targetRotationX;
+    targetRotationOnMouseDownY = targetRotationY;
+  }
+  
+  function onMouseMove(event) {
+    if (!params.enableMouseControls) return;
+    
+    if (mouseDown) {
+      mouseX = event.clientX - windowHalfX;
+      mouseY = event.clientY - windowHalfY;
+      
+      // Reduced sensitivity from 0.02 to 0.01 for smoother rotation
+      targetRotationX = targetRotationOnMouseDownX + (mouseX - mouseXOnMouseDown) * 0.01;
+      targetRotationY = targetRotationOnMouseDownY + (mouseY - mouseYOnMouseDown) * 0.01;
+      
+      // Limit vertical rotation to avoid flipping
+      targetRotationY = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, targetRotationY));
+    }
+  }
+  
+  function onMouseUp() {
+    if (!params.enableMouseControls) return;
+    mouseDown = false;
+  }
+  
+  function onMouseWheel(event) {
+    if (!params.enableMouseControls) return;
+    
+    event.preventDefault();
+    
+    // Adjust zoom based on wheel delta - dramatically increased sensitivity with * 8
+    const delta = Math.sign(event.deltaY);
+    cameraDistance += delta * params.globalScale * 8;
+    
+    // Greatly increase the zoom-out range (from 50 to 500)
+    cameraDistance = Math.max(5 * params.globalScale, Math.min(500 * params.globalScale, cameraDistance));
+    
+    // Update camera position
+    updateCameraPosition();
+  }
+  
+  // Add event listeners
+  canvas.addEventListener('mousedown', onMouseDown, false);
+  document.addEventListener('mousemove', onMouseMove, false);
+  document.addEventListener('mouseup', onMouseUp, false);
+  canvas.addEventListener('wheel', onMouseWheel, false);
+  
+  // Handle window resize
+  function updateHalfDimensions() {
+    windowHalfX = window.innerWidth / 2;
+    windowHalfY = window.innerHeight / 2;
+  }
+  window.addEventListener('resize', updateHalfDimensions, false);
+  
   scene.add(new THREE.AmbientLight(0x404040, 0.5)); 
   hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8); 
   hemisphereLight.position.set(0, 20 * params.globalScale, 0);
@@ -310,9 +408,22 @@ function setupGUI() {
     });
   addControl(sceneFolder, 'backgroundMode', ['Solid Color', 'Starfield']).name('Background').onChange(() => { updateBackground(); saveParamsToLocalStorage(); });
   addColorControl(sceneFolder, 'backgroundColor', 'BG Color').onChange(() => { updateBackground(); saveParamsToLocalStorage(); });
-  addControl(sceneFolder, 'cameraAutoRotate').name('Auto-Rotate Cam').onChange(saveParamsToLocalStorage);
+  addControl(sceneFolder, 'cameraAutoRotate').name('Auto-Rotate Cam').onChange(() => {
+    saveParamsToLocalStorage();
+  });
   addControl(sceneFolder, 'cameraAutoRotateSpeed', 0.0001, 0.01, 0.0001).name('Cam Rotate Speed').onChange(saveParamsToLocalStorage);
-  // sceneFolder.open();
+  addControl(sceneFolder, 'enableMouseControls').name('Mouse Controls').onChange(() => {
+    // When mouse controls are enabled, restore the default camera position
+    if (params.enableMouseControls) {
+      // Make sure we have a reasonable starting rotation
+      if (targetRotationX === 0 && targetRotationY === 0) {
+        targetRotationX = Math.PI / 4;
+      }
+      updateCameraPosition();
+    }
+    saveParamsToLocalStorage();
+  });
+  sceneFolder.open();
   
   const structureFolder = gui.addFolder('Graph Structure');
   addControl(structureFolder, 'nodeCount', 2, 50, 1).name('Node Count').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
@@ -658,10 +769,22 @@ function animate() {
       nodeMeshes.forEach(node => node.scale.set(1,1,1)); // Reset scale if disabled
   }
 
-  if (params.cameraAutoRotate) {
-      camera.position.x = Math.sin(time * params.cameraAutoRotateSpeed) * (15 * params.globalScale);
-      camera.position.z = Math.cos(time * params.cameraAutoRotateSpeed) * (15 * params.globalScale);
-      camera.lookAt(scene.position); // Keep looking at the center
+  // Handle auto-rotation and mouse controls
+  if (params.enableMouseControls) {
+    // When mouse controls are enabled, check if we also have auto-rotation
+    if (params.cameraAutoRotate) {
+      // Auto-rotate with mouse controls enabled
+      targetRotationX += params.cameraAutoRotateSpeed * 2;
+    }
+    // Always update camera position when mouse controls are enabled
+    updateCameraPosition();
+  }
+  // If mouse controls are disabled but auto-rotation is enabled
+  else if (params.cameraAutoRotate) {
+    // Use the original auto-rotation method
+    camera.position.x = Math.sin(time * params.cameraAutoRotateSpeed) * cameraDistance;
+    camera.position.z = Math.cos(time * params.cameraAutoRotateSpeed) * cameraDistance;
+    camera.lookAt(scene.position);
   }
   
   graphGroup.rotation.x += params.rotationXIncrement; 
@@ -684,6 +807,11 @@ function onResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    
+    // Update window dimensions for mouse controls
+    windowHalfX = window.innerWidth / 2;
+    windowHalfY = window.innerHeight / 2;
+    
     // Force a render after resize
     renderer.render(scene, camera);
   }
