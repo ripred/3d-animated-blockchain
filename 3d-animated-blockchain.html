@@ -272,8 +272,8 @@ function init() {
     const delta = Math.sign(event.deltaY);
     cameraDistance += delta * params.globalScale * 8;
     
-    // Greatly increase the zoom-out range (from 50 to 500)
-    cameraDistance = Math.max(5 * params.globalScale, Math.min(500 * params.globalScale, cameraDistance));
+    // Allow unlimited zoom range
+    cameraDistance = Math.max(0.1 * params.globalScale, cameraDistance);
     
     // Update camera position
     updateCameraPosition();
@@ -400,7 +400,7 @@ function setupGUI() {
   }
 
   const sceneFolder = gui.addFolder('Scene & Camera');
-  addControl(sceneFolder, 'globalScale', 0.1, 3.0, 0.01).name('Global Scale').onChange(() => { 
+  addControl(sceneFolder, 'globalScale').name('Global Scale').onChange(() => { 
       rebuild(); 
       if(directionalLight) { /* ... shadow camera updates ... */ }
       if(starFieldGroup.children.length > 0 && params.backgroundMode === 'Starfield') { buildStarfield(); } // Rebuild stars on scale change
@@ -411,7 +411,7 @@ function setupGUI() {
   addControl(sceneFolder, 'cameraAutoRotate').name('Auto-Rotate Cam').onChange(() => {
     saveParamsToLocalStorage();
   });
-  addControl(sceneFolder, 'cameraAutoRotateSpeed', 0.0001, 0.01, 0.0001).name('Cam Rotate Speed').onChange(saveParamsToLocalStorage);
+  addControl(sceneFolder, 'cameraAutoRotateSpeed').name('Cam Rotate Speed').onChange(saveParamsToLocalStorage);
   addControl(sceneFolder, 'enableMouseControls').name('Mouse Controls').onChange(() => {
     // When mouse controls are enabled, restore the default camera position
     if (params.enableMouseControls) {
@@ -426,19 +426,19 @@ function setupGUI() {
   sceneFolder.open();
   
   const structureFolder = gui.addFolder('Graph Structure');
-  addControl(structureFolder, 'nodeCount', 2, 50, 1).name('Node Count').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
-  addControl(structureFolder, 'radius', 1, 10, 0.1).name('Base Radius').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  addControl(structureFolder, 'nodeCount').name('Node Count').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  addControl(structureFolder, 'radius').name('Base Radius').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
 
   const nodeFolder = gui.addFolder('Node Appearance');
   addColorControl(nodeFolder, 'nodeColor', 'Node Color').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
-  addControl(nodeFolder, 'nodeSize', 0.1, 1, 0.05).name('Base Node Size').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  addControl(nodeFolder, 'nodeSize').name('Base Node Size').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
   addControl(nodeFolder, 'nodePulsationEnabled').name('Pulsate Nodes').onChange(() => { saveParamsToLocalStorage(); });
-  addControl(nodeFolder, 'nodePulsationSpeed', 0.1, 2.0, 0.05).name('Pulsate Speed').onChange(saveParamsToLocalStorage);
-  addControl(nodeFolder, 'nodePulsationAmount', 0.01, 0.5, 0.01).name('Pulsate Amount').onChange(saveParamsToLocalStorage);
+  addControl(nodeFolder, 'nodePulsationSpeed').name('Pulsate Speed').onChange(saveParamsToLocalStorage);
+  addControl(nodeFolder, 'nodePulsationAmount').name('Pulsate Amount').onChange(saveParamsToLocalStorage);
 
 
   const cubeFolder = gui.addFolder('Cube Appearance');
-  addControl(cubeFolder, 'cubeSize', 0.05, 0.5, 0.01).name('Base Cube Size').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
+  addControl(cubeFolder, 'cubeSize').name('Base Cube Size').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
   addColorControl(cubeFolder, 'cubeInteriorColor', 'Cube Interior Color').onChange(() => {
       if (!params.randomCubeColor) rebuildPulses();
       saveParamsToLocalStorage();
@@ -446,22 +446,27 @@ function setupGUI() {
   addControl(cubeFolder, 'randomCubeColor').name('Random Cube Color').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); });
   addControl(cubeFolder, 'softInternalCubeLight').name('Soft Internal Light').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); }); 
   addColorControl(cubeFolder, 'cubeEdgeColor', 'Edge Color').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); });
-  addControl(cubeFolder, 'cubeEdgeThickness', 0.5, 5.0, 0.1).name('Edge Thickness').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); });
+  addControl(cubeFolder, 'cubeEdgeThickness').name('Edge Thickness').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); });
 
 
   const lineFolder = gui.addFolder('Line Appearance');
   addColorControl(lineFolder, 'lineColor', 'Line Color').onChange(() => { rebuild(); saveParamsToLocalStorage(); });
-  addControl(lineFolder, 'lineThickness', 0.1, 10.0, 0.1).name('Base Line Thickness').onChange(() => { rebuild(); saveParamsToLocalStorage(); }); 
+  addControl(lineFolder, 'lineThickness').name('Base Line Thickness').onChange(() => { rebuild(); saveParamsToLocalStorage(); }); 
   
   const animationFolder = gui.addFolder('Animation & Interaction');
-  addControl(animationFolder, 'pulseCount', 0, 100, 1).name('Pulse Count').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); });
-  addControl(animationFolder, 'pulseSpeed', 0.05, 1, 0.01).name('Pulse Speed').onChange(saveParamsToLocalStorage); 
-  addControl(animationFolder, 'rotationXIncrement', -0.01, 0.01, 0.0001).name('Graph Rot X').onChange(saveParamsToLocalStorage);
-  addControl(animationFolder, 'rotationYIncrement', -0.01, 0.01, 0.0001).name('Graph Rot Y').onChange(saveParamsToLocalStorage);
-  addControl(animationFolder, 'rotationZIncrement', -0.01, 0.01, 0.0001).name('Graph Rot Z').onChange(saveParamsToLocalStorage);
+  addControl(animationFolder, 'pulseCount').name('Pulse Count').onChange(() => { rebuildPulses(); saveParamsToLocalStorage(); });
+  addControl(animationFolder, 'pulseSpeed').name('Pulse Speed').onChange(saveParamsToLocalStorage); 
+  const rotXControl = addControl(animationFolder, 'rotationXIncrement').name('Graph Rot X').onChange(saveParamsToLocalStorage);
+  rotXControl.step(0.0001);
+  
+  const rotYControl = addControl(animationFolder, 'rotationYIncrement').name('Graph Rot Y').onChange(saveParamsToLocalStorage);
+  rotYControl.step(0.0001);
+  
+  const rotZControl = addControl(animationFolder, 'rotationZIncrement').name('Graph Rot Z').onChange(saveParamsToLocalStorage);
+  rotZControl.step(0.0001);
   addControl(animationFolder, 'nodeTakesPulseColor').name('Node Takes Pulse Color').onChange(saveParamsToLocalStorage);
   addControl(animationFolder, 'pulseTrailEnabled').name('Enable Pulse Trails').onChange(() => { rebuildPulses(); saveParamsToLocalStorage();}); // Rebuild pulses to add/remove trail logic
-  addControl(animationFolder, 'pulseTrailLength', 1, 20, 1).name('Trail Length').onChange(() => { rebuildPulses(); saveParamsToLocalStorage();});
+  addControl(animationFolder, 'pulseTrailLength').name('Trail Length').onChange(() => { rebuildPulses(); saveParamsToLocalStorage();});
   
   gui.add(params, 'generateApp').name('Generate Embeddable App');
 
