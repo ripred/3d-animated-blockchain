@@ -849,7 +849,7 @@ function onResize() {
 }
 
 // ========= Embeddable App Generator =========
-function generateEmbeddableApp() { /* ... (unchanged but would need to include new params) ... */ 
+function generateEmbeddableApp() {
     const generatedParams = JSON.parse(JSON.stringify(params)); 
     delete generatedParams.generateApp; 
 
@@ -989,7 +989,7 @@ function generateEmbeddableApp() { /* ... (unchanged but would need to include n
       animate_embed();
     }
 
-    function getPlatonicSolidVertices_embed(count, radius) { /* ... (same as main) ... */ 
+    function getPlatonicSolidVertices_embed(count, radius) {
         let points = []; const p = (1 + Math.sqrt(5)) / 2; const ip = 1 / p; 
         switch (count) {
             case 4: points = [ new THREE.Vector3(1,1,1),new THREE.Vector3(1,-1,-1),new THREE.Vector3(-1,1,-1),new THREE.Vector3(-1,-1,1) ]; break;
@@ -1045,26 +1045,211 @@ function generateEmbeddableApp() { /* ... (unchanged but would need to include n
       return group;
     }
 
-    function rebuild_embed() { 
+    function disposeGroup_embed(group) {
+      if (!group) return;
+      group.traverse(obj => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+          else obj.material.dispose();
+        }
+        if (obj.isLight && typeof obj.dispose === 'function') obj.dispose();
+      });
+      group.clear();
+    }
+
+    function rebuild_embed() {
+        disposeGroup_embed(graphGroup_embed);
+        disposeGroup_embed(pulsesGroup_embed);
+        disposeGroup_embed(pulseTrailsGroup_embed);
+
+        graphGroup_embed.visible = true;
+        pulsesGroup_embed.visible = true;
+        pulseTrailsGroup_embed.visible = true;
+
         updateBackground_embed();
         if (starFieldGroup_embed && starFieldGroup_embed.children.length > 0 && config.backgroundMode === 'Starfield') buildStarfield_embed();
 
-        if (directionalLight_embed) { /* ... light position and shadow camera updates ... */ }
-        if (hemisphereLight_embed) { /* ... light position updates ... */ }
-        if (camera_embed) { /* ... camera position updates ... */ }
+        if (directionalLight_embed) {
+          directionalLight_embed.position.set(15 * config.globalScale, 20 * config.globalScale, 10 * config.globalScale);
+          directionalLight_embed.shadow.camera.left = -15 * config.globalScale;
+          directionalLight_embed.shadow.camera.right = 15 * config.globalScale;
+          directionalLight_embed.shadow.camera.top = 15 * config.globalScale;
+          directionalLight_embed.shadow.camera.bottom = -15 * config.globalScale;
+          directionalLight_embed.shadow.camera.far = 50 * config.globalScale;
+          directionalLight_embed.shadow.camera.updateProjectionMatrix();
+        }
+        if (hemisphereLight_embed) {
+          hemisphereLight_embed.position.set(0, 20 * config.globalScale, 0);
+        }
+        if (camera_embed) {
+          let zPosition = 15 * config.globalScale;
+          if (config.radius > 5) zPosition = 20 * config.globalScale;
+          camera_embed.position.set(10 * config.globalScale, 10 * config.globalScale, zPosition);
+          camera_embed.lookAt(0,0,0);
+        }
 
-        buildGraph_embed(); 
-        rebuildPulses_embed(); 
+        buildGraph_embed();
+        rebuildPulses_embed();
+
+        if (renderer_embed) renderer_embed.render(scene_embed, camera_embed);
     }
 
-    function buildGraph_embed() { /* ... (same as main, using config and _embed vars) ... */ }
-    function rebuildPulses_embed() { /* ... (same as main, using config and _embed vars, including pulseTrailsGroup_embed.clear()) ... */ }
-    function updatePulsePosition_embed(pulseCube) { /* ... (same as main, using config and _embed vars, including trail logic with pulseTrailsGroup_embed) ... */ }
-    function updatePulse_embed(pulseCube, deltaTime) { /* ... (same as main, using config and _embed vars, including trail clearing) ... */ }
+    function buildGraph_embed() {
+      graphGroup_embed.clear();
+      nodeMeshes_embed = []; edges_embed = [];
+      let nodePositions = [];
+      const currentRadius = getScaledRadius_embed();
+      const currentNodeSize = getScaledNodeSize_embed();
+      const currentLineThickness = getScaledLineThickness_embed();
+      const platonicSolidVertexCounts = [4, 6, 8, 12, 20];
+      const isPlatonic = platonicSolidVertexCounts.includes(config.nodeCount);
 
-    // (buildGraph_embed, rebuildPulses_embed, updatePulsePosition_embed, updatePulse_embed need to be fully copied and adapted from the main simulation,
-    // replacing 'params' with 'config' and 'pulseTrailsGroup' with 'pulseTrailsGroup_embed', etc.
-    // This is abbreviated here for brevity but would be complete in the actual generated code.)
+      if (isPlatonic) {
+        nodePositions = getPlatonicSolidVertices_embed(config.nodeCount, currentRadius);
+      } else {
+        for (let i = 0; i < config.nodeCount; i++) {
+          const phi = Math.acos(-1 + (2 * i) / config.nodeCount);
+          const theta = Math.sqrt(config.nodeCount * Math.PI) * phi;
+          nodePositions.push(new THREE.Vector3(
+            currentRadius * Math.sin(phi) * Math.cos(theta),
+            currentRadius * Math.sin(phi) * Math.sin(theta),
+            currentRadius * Math.cos(phi)
+          ));
+        }
+      }
+
+      const lineMaterial = new THREE.LineBasicMaterial({
+          color: new THREE.Color(config.lineColor),
+          linewidth: currentLineThickness
+        });
+      const nodeGeometry = new THREE.SphereGeometry(currentNodeSize, 32, 16);
+
+      nodePositions.forEach((pos, i) => {
+        const nodeMaterial = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(config.nodeColor),
+            emissive: new THREE.Color(config.nodeColor),
+            emissiveIntensity: 0.3,
+            roughness: 0.5,
+            metalness: 0.2
+        });
+        const sphereMesh = new THREE.Mesh(nodeGeometry, nodeMaterial);
+        sphereMesh.position.copy(pos);
+        sphereMesh.castShadow = true;
+        graphGroup_embed.add(sphereMesh);
+        nodeMeshes_embed.push(sphereMesh);
+        for (let j = i + 1; j < nodePositions.length; j++) {
+          const lineGeometry = new THREE.BufferGeometry().setFromPoints([pos, nodePositions[j]]);
+          graphGroup_embed.add(new THREE.Line(lineGeometry, lineMaterial));
+          edges_embed.push({ from: i, to: j });
+        }
+      });
+    }
+
+    function rebuildPulses_embed() {
+      disposeGroup_embed(pulsesGroup_embed);
+      disposeGroup_embed(pulseTrailsGroup_embed);
+      pulses_embed = [];
+      if (!edges_embed.length || config.pulseCount === 0) return;
+      for (let i = 0; i < config.pulseCount; i++) {
+        const pulseCube = makeCube_embed(config.cubeInteriorColor);
+        const edge = edges_embed[Math.floor(Math.random() * edges_embed.length)];
+        pulseCube.userData = {
+            from: edge.from,
+            to: edge.to,
+            t: Math.random(),
+            color: pulseCube.userData.color,
+            internalLight: pulseCube.userData.internalLight,
+            trailSegments: []
+        };
+        updatePulsePosition_embed(pulseCube);
+        pulsesGroup_embed.add(pulseCube);
+        pulses_embed.push(pulseCube);
+      }
+    }
+
+    function updatePulsePosition_embed(pulseCube) {
+      if (nodeMeshes_embed[pulseCube.userData.from] && nodeMeshes_embed[pulseCube.userData.to]) {
+        const startNodePos = nodeMeshes_embed[pulseCube.userData.from].position;
+        const endNodePos = nodeMeshes_embed[pulseCube.userData.to].position;
+        pulseCube.position.lerpVectors(startNodePos, endNodePos, pulseCube.userData.t);
+
+        if (config.pulseTrailEnabled) {
+            const trailSegments = pulseCube.userData.trailSegments;
+            const maxTrailLength = config.pulseTrailLength;
+
+            if (trailSegments.length < maxTrailLength || Math.random() < 0.3) {
+                const trailOpacity = 1.0 - (trailSegments.length / maxTrailLength) * 0.8;
+                const trailSegment = makeCube_embed(pulseCube.userData.color, true, trailOpacity * 0.5);
+                trailSegment.position.copy(pulseCube.position);
+                trailSegment.scale.setScalar(0.5 + (trailSegments.length / maxTrailLength) * 0.5);
+                pulseTrailsGroup_embed.add(trailSegment);
+                trailSegments.unshift(trailSegment);
+            }
+
+            while (trailSegments.length > maxTrailLength) {
+                const oldSegment = trailSegments.pop();
+                pulseTrailsGroup_embed.remove(oldSegment);
+                if (oldSegment.geometry) oldSegment.geometry.dispose();
+                if (oldSegment.material) oldSegment.material.dispose();
+            }
+
+            trailSegments.forEach((segment, index) => {
+                if (segment && segment.children && segment.children.length > 0) {
+                    const cubeMesh = segment.children[0];
+                    if (cubeMesh && cubeMesh.material) {
+                        cubeMesh.material.opacity = (1.0 - (index / maxTrailLength)) * 0.4;
+                        if (cubeMesh.material.opacity <= 0.01) {
+                            pulseTrailsGroup_embed.remove(segment);
+                            segment.children.forEach(child => {
+                                if (child.geometry) child.geometry.dispose();
+                                if (child.material) child.material.dispose();
+                            });
+                            pulseCube.userData.trailSegments.splice(index, 1);
+                        }
+                    }
+                }
+            });
+        }
+      }
+    }
+
+    function updatePulse_embed(pulseCube, deltaTime) {
+      pulseCube.userData.t += config.pulseSpeed * deltaTime;
+      if (pulseCube.userData.t >= 1) {
+        const targetNodeIndex = pulseCube.userData.to;
+        const pulseActualColor = pulseCube.userData.color;
+        if (config.nodeTakesPulseColor && nodeMeshes_embed[targetNodeIndex]) {
+            const targetNodeMaterial = nodeMeshes_embed[targetNodeIndex].material;
+            targetNodeMaterial.color.setHex(pulseActualColor);
+            if (targetNodeMaterial.emissive) {
+                 targetNodeMaterial.emissive.setHex(pulseActualColor);
+            }
+        }
+        pulseCube.userData.t = 0;
+        if (pulseCube.userData.trailSegments) {
+            pulseCube.userData.trailSegments.forEach(segment => {
+                pulseTrailsGroup_embed.remove(segment);
+                if (segment.geometry) segment.geometry.dispose();
+                if (segment.material) segment.material.dispose();
+            });
+            pulseCube.userData.trailSegments = [];
+        }
+
+        const connectedEdges = edges_embed.filter(e => e.from === targetNodeIndex || e.to === targetNodeIndex);
+        let nextEdge;
+        if (connectedEdges.length > 0) {
+            nextEdge = connectedEdges[Math.floor(Math.random() * connectedEdges.length)];
+            pulseCube.userData.from = targetNodeIndex;
+            pulseCube.userData.to = (nextEdge.from === targetNodeIndex) ? nextEdge.to : nextEdge.from;
+        } else if (edges_embed.length > 0) {
+            nextEdge = edges_embed[Math.floor(Math.random() * edges_embed.length)];
+            pulseCube.userData.from = nextEdge.from;
+            pulseCube.userData.to = nextEdge.to;
+        } else { return; }
+      }
+      updatePulsePosition_embed(pulseCube);
+    }
 
 
     function animate_embed() {
@@ -1099,11 +1284,23 @@ function generateEmbeddableApp() { /* ... (unchanged but would need to include n
       renderer_embed.render(scene_embed, camera_embed);
     }
 
-    function onResize_embed() { /* ... (same as main) ... */ }
+    function onResize_embed() {
+      const container = document.getElementById('simulation-canvas-container');
+      if (camera_embed && renderer_embed && container) {
+        camera_embed.aspect = container.clientWidth / container.clientHeight;
+        camera_embed.updateProjectionMatrix();
+        renderer_embed.setSize(container.clientWidth, container.clientHeight);
+        renderer_embed.render(scene_embed, camera_embed);
+      }
+    }
 
     // --- BEGIN SIMULATION API ---
     window.simulationAPI = {
-      updateConfig: function(newConfigUpdates) { /* ... (same as previous, ensure all new keys are handled) ... */ },
+      updateConfig: function(newConfigUpdates) {
+        if (typeof newConfigUpdates !== 'object') return;
+        Object.assign(config, newConfigUpdates);
+        rebuild_embed();
+      },
       // ... all individual setters, including new ones like setSoftInternalCubeLight, setPulseTrailEnabled etc.
       setSoftInternalCubeLight: function(value) { this.updateConfig({ softInternalCubeLight: value }); },
       setPulseTrailEnabled: function(value) { this.updateConfig({ pulseTrailEnabled: value }); },
@@ -1142,14 +1339,30 @@ function generateEmbeddableApp() { /* ... (unchanged but would need to include n
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init_embed); } 
     else { init_embed(); }
     
-    window.cleanupSimulation = () => { /* ... (same as previous) ... */ };
+    window.cleanupSimulation = () => {
+      if (animationFrameId_embed) cancelAnimationFrame(animationFrameId_embed);
+      window.removeEventListener('resize', onResize_embed);
+      disposeGroup_embed(graphGroup_embed);
+      disposeGroup_embed(pulsesGroup_embed);
+      disposeGroup_embed(pulseTrailsGroup_embed);
+      disposeGroup_embed(starFieldGroup_embed);
+      if (renderer_embed) {
+        renderer_embed.dispose();
+        if (renderer_embed.domElement && renderer_embed.domElement.parentNode) {
+          renderer_embed.domElement.parentNode.removeChild(renderer_embed.domElement);
+        }
+      }
+      scene_embed = null;
+      camera_embed = null;
+      renderer_embed = null;
+      nodeMeshes_embed = [];
+      edges_embed = [];
+      pulses_embed = [];
+    };
   <\/script> 
 </body>
-</html>
-`; 
-    // For brevity, the full copy of buildGraph_embed, rebuildPulses_embed etc. into the template literal is omitted here,
-    // but it would be present in the actual output. The API update logic in updateConfig also needs to handle new keys.
-    // The key point is that all new `params` are included in `generatedParams` and the API.
+  </html>
+  `;
 
     const codeOutputTextarea = document.getElementById('generatedCodeOutput');
     const codeContainerDiv = document.getElementById('generatedCodeContainer');
