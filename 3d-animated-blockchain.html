@@ -407,11 +407,18 @@ function setupGUI() {
   }
 
   const sceneFolder = gui.addFolder('Scene & Camera');
-  addControl(sceneFolder, 'globalScale').name('Global Scale').onChange(() => { 
-      rebuild(); 
-      if(directionalLight) { /* ... shadow camera updates ... */ }
+  addControl(sceneFolder, 'globalScale').name('Global Scale').onChange(() => {
+      rebuild();
+      if(directionalLight) {
+        directionalLight.shadow.camera.left = -15 * params.globalScale;
+        directionalLight.shadow.camera.right = 15 * params.globalScale;
+        directionalLight.shadow.camera.top = 15 * params.globalScale;
+        directionalLight.shadow.camera.bottom = -15 * params.globalScale;
+        directionalLight.shadow.camera.far = 50 * params.globalScale;
+        directionalLight.shadow.camera.updateProjectionMatrix();
+      }
       if(starFieldGroup.children.length > 0 && params.backgroundMode === 'Starfield') { buildStarfield(); } // Rebuild stars on scale change
-      saveParamsToLocalStorage(); 
+      saveParamsToLocalStorage();
     });
   addControl(sceneFolder, 'backgroundMode', ['Solid Color', 'Starfield']).name('Background').onChange(() => { updateBackground(); saveParamsToLocalStorage(); });
   addColorControl(sceneFolder, 'backgroundColor', 'BG Color').onChange(() => { updateBackground(); saveParamsToLocalStorage(); });
